@@ -1,0 +1,17 @@
+{
+  "name": "map-rp-bot-archives",
+  "version": "1.0.0",
+  "description": "The archives for Map RP Bot.",
+  "main": "test.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "nvm": "0.0.4"
+  },
+  "devDependencies": {},
+  "keywords": []
+}
