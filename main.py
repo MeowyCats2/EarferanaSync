@@ -1,4 +1,3 @@
-exit()
 import discord
 import asyncio
 import os
@@ -20,7 +19,7 @@ def run():
   try:
     app.run(host="0.0.0.0", port=2347)
   except Exception as exception:
-    console.log(exception)
+    print(exception)
     if "Temporary failure in name resolution" in str(exception) or "Server disconnected" in str(exception):
       os.system("kill 1")
 
