@@ -335,12 +335,6 @@ servers = [
       "channel": 1025216458432708618
     },
     {
-      "name": "Bodroum League",
-      "webhook": "https://discord.com/api/webhooks/1097655715230916689/73pTWRczorkTWdqw50cYphO63ePenAS8gEQQZGwPp0jlnk00elUkDA7i_QrBiqdaKV_h",
-      "wid": 1097655715230916689,
-      "channel": 1096286713636200528
-    },
-    {
       "name": "Pltfcl. Official Server 1",
       "webhook": "https://discord.com/api/webhooks/1025222013058560000/SVZ9_jItnfOCRd__aKVICvc7ylKgTNB28rh8oJr-vX0hMaUD6iEEJJe4WOg06Sd4-P4_",
       "wid": 1025222013058560000,
@@ -359,13 +353,8 @@ servers = [
       "channel": 1032309953303678976
     }
   ],
+  # tcc
   [
-    {
-      "name": "Bodroum League",
-      "webhook": "https://discord.com/api/webhooks/1145224870427377704/rNw04V4jq4ZF5rY4vqKWPRy6ZIJCYO-8cpm7fv2fCcH5-Mnw7P4idzWB28fHhczDAc8n", #"https://discord.com/api/webhooks/1099913189631742093/OBVj72ppSRKRPU5Vvy4YujbwaqgOn6fAp58irk4NmpEsLA34pGU4foACnBuUVFHxRdSc",
-      "wid": 1145224870427377704, #1099913189631742093,
-      "channel": 1099631642064199686
-    },
     {
       "name": "Earferana Chronicles",
       "webhook": "https://discord.com/api/webhooks/1099913624132259881/tQdfGssnpF04XraOaIybX6eGebLY9a8WP-wJA4lpi6vLN5rnJbd31tLYCrTLJB4Zs91M",
@@ -397,46 +386,49 @@ servers = [
       "channel": 1099916484051996725
     }
   ],
-  #MGTV2,
+  # mijovia lobby
   [
     {
-      "name": "Bodroum League",
-      "webhook": "https://discord.com/api/webhooks/1145228767237771325/tCb4FffbI-KGoGSSscRkM7O9yDrK3q2zw06FPeeBVG1JMGxVYm8IGVqGXfSpBtiz7aCP", #https://discord.com/api/webhooks/1099917037213581342/8NVUIrhEI-vr14hO2K6UixxQkxyFaiZjWNt7bXTZiyYo0Wgvs3rJoX-j2vOHDq3y2x8d",
-      "wid": 1145228767237771325, #1099917037213581342,
-      "channel": 1099631642064199687
+      "name": "Mijovia",
+      "webhook": "https://discord.com/api/webhooks/1224873167844278364/HgVe7DDrzts5p-XbBt1A2aPBOeGT1uMCmEBlVgSkEehVBJsJ5UoEOingWwDKPORkQUaP",
+      "wid": 1224873167844278364,
+      "channel": 1216817245259432057
     },
     {
       "name": "Earferana Chronicles",
-      "webhook": "https://discord.com/api/webhooks/1099917454475534436/9MQaJ7oQ_A5xoebxLYDiE-9ntfGpsXnep579ygck0lOQOqhocPmHS6sWsyzOYxQPySRq",
-      "wid": 1099917454475534436,
-      "channel": 1099917403107901470
-    },
-    {
-      "name": "pltfcl. Official Server 1",
-      "webhook": "https://discord.com/api/webhooks/1099918017871233085/wrHuWR1eAdbMF_pl2VmAjvmZ0Q5oFhqY7Q3hvXvzRADavELzgmZ83pTSGhyFFRPk05vs",
-      "wid": 1099918017871233085,
-      "channel": 1099917820101394463
+      "webhook": "https://discord.com/api/webhooks/1224872389070946365/_WGeakiGEqYxALLDq6npk4NtB3plSPV5DEnQtxeYbSqPeXbyxNnqS1C_a686jlUqKXwb",
+      "wid": 1224872389070946365,
+      "channel": 1224872341172125728
     }
   ],
-  #DRAMA
+  # mijovia offtopic
   [
     {
-      "name": "Bodroum League",
-      "webhook": "https://discord.com/api/webhooks/1145436475849183385/YHPmzi5QLanAbp2BoaP3DkJSzee0OVLIxuQ4N1FWn0GU0qY69dTNAbL0Ky8TZKazPoAv", #"https://discord.com/api/webhooks/1144088832141176834/J441oWkE-vkyBWO8VhBlxnOg-FRRFHGB2-YJhfOjFMx6x69w4nhQbQPY8Ci8IN7Jrb7t",
-      "wid": 1145436475849183385, #1144088832141176834,
-      "channel": 1099631642064199688
+      "name": "Mijovia",
+      "webhook": "https://discord.com/api/webhooks/1224875371002990692/ONrAZ9Wgd61HipaUZCK9mv3rQ4bGYFg9KzsOe9JO9lkVaOjWM2ErgeAy1Z3IsvjIJqt4",
+      "wid": 1224875371002990692,
+      "channel": 1216817248107499621
     },
     {
       "name": "Earferana Chronicles",
-      "webhook": "https://discord.com/api/webhooks/1144088107432562719/h2qIHWjkVTpjmggdbn3DskCM27yJVNwbAKeEfERJag1jsoNtBbDJ4Y6idbe262GueyFu",
-      "wid": 1144088107432562719,
-      "channel": 1144087247432450118
+      "webhook": "https://discord.com/api/webhooks/1224876873872310415/Pebxkw8x6mZrjBD3lCcpNF2iuU__00BlhfgsNXsNKp8KhPw7A1PDp4laWXAKNWBb4dsI",
+      "wid": 1224876873872310415,
+      "channel": 1224876819417796620
+    }
+  ],
+  #debates
+  [
+    {
+      "name": "Mijovia",
+      "webhook": "https://discord.com/api/webhooks/1224876035833725038/ewq7HhSdve5iS6TFoIuMN2tNYRUQ0nRFPLf7KAmEb1_L3Kb9OiYVQREVCrXjT6vN4BrX",
+      "wid": 1224876035833725038,
+      "channel": 1216817249562787940
     },
     {
-      "name": "pltfcl. Official Server 1",
-      "webhook": "https://discord.com/api/webhooks/1144090055720321024/WFaXOXnrheFwji81-uvB_dkMHw8XceyjYAtGj5vvIIYuZfZDB9QfApsLCwqCXT9pPdM0",
-      "wid": 1144090055720321024,
-      "channel": 1144090009603944458
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1224877307525726219/b_WWyNQXibPCsByAZ7XEZRQafAtMYv4fB9CNlASlpZGl61INOxeKa_qKXgtLJ1UV3G6K",
+      "wid": 1224877307525726219,
+      "channel": 1224877250705362965
     }
   ]
 ]
