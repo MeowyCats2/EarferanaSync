@@ -5,8 +5,10 @@ from discord.ext import commands
 #from wsgi import start
 import aiohttp
 import datetime
+import sys
 from forgive import ForgiveDB
-os.system("node .")
+from subprocess import Popen
+Popen(["node", "."], stdout=sys.stdout, stderr=sys.stderr)
 import requests
 import traceback
 
