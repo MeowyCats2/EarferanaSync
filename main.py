@@ -6,7 +6,7 @@ from discord.ext import commands
 import aiohttp
 import datetime
 from forgive import ForgiveDB
-#os.system("node test.js")
+os.system("node .")
 import requests
 import traceback
 
@@ -705,12 +705,6 @@ async def on_raw_bulk_message_delete(payload):
           entry[server["name"]],
         )
 
-
-#@bot.event
-#async def on_member_join(member):
-#    if member.guild.id == 1096286711455166587 or member.guild.id == 1096515865295462470:
-#      if member.bot and not member.public_flags.verified_bot:
-#        await member.kick(reason="Bot not verified")
         
 
 bot.run(token)
