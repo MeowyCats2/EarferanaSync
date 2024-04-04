@@ -1,0 +1,107 @@
+[
+  // Universal Counting
+  [
+    {
+      "name": "Mylo the Cat Server",
+      "webhook": "https://discord.com/api/webhooks/1025219110356922448/Bq9tXzPSHMkzQmofkVsoGDOmUqtusxYx_56wDrkMmVTWYOHNUU1Zo78C0JTHhSMyMJsu",
+      "wid": "1025219110356922448",
+      "channel": "1025216458432708618"
+    },
+    {
+      "name": "Pltfcl. Official Server 1",
+      "webhook": "https://discord.com/api/webhooks/1025222013058560000/SVZ9_jItnfOCRd__aKVICvc7ylKgTNB28rh8oJr-vX0hMaUD6iEEJJe4WOg06Sd4-P4_",
+      "wid": "1025222013058560000",
+      "channel": "1025221663660445798"
+    },
+    {
+      "name": "Mod Server",
+      "webhook": "https://discord.com/api/webhooks/1025222887910670356/GqFbWUMPlfxALHwXm0GJRGjHEjd1fet9VxsLjN8veJ31FAU2gjltNlMbspzc16tltESb",
+      "wid": "1025222887910670356",
+      "channel": "1025222611459915786"
+    },
+    {
+      "name": "Mylo the cat backup",
+      "webhook": "https://discord.com/api/webhooks/1074487042471366756/wsipKWfrX9sKKgDqMOrgJsxr39uol4oT-srsU2HYxt4RbLUrCC8o30q7MkYTDN-tdXZj",
+      "wid": "1074487042471366756",
+      "channel": "1032309953303678976"
+    }
+  ],
+  // tcc
+  [
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1099913624132259881/tQdfGssnpF04XraOaIybX6eGebLY9a8WP-wJA4lpi6vLN5rnJbd31tLYCrTLJB4Zs91M",
+      "wid": "1099913624132259881",
+      "channel": "1099913568285118505"
+    },
+    {
+      "name": "pltfcl. Official Server 1",
+      "webhook": "https://discord.com/api/webhooks/1099914298748305449/AqS_evqG07vg8FjOZyUkPA5UZCmFcqHDyzDFVL3fHodNtr7VDlxBaeAiYdUZlpB59Pha",
+      "wid": "1099914298748305449",
+      "channel": "1099914236232216647"
+    },
+    {
+      "name": "The Mod Server",
+      "webhook": "https://discord.com/api/webhooks/1099914599442161666/gZD_i2FlDpsrd8MYXDduF2KEEWcaaSsUJB0DBG85ciUjlQn7uEGaMahMwt5EOCAp3isn",
+      "wid": "1099914599442161666",
+      "channel": "1099914541262979142"
+    },
+    {
+      "name": "Starwalk Community",
+      "webhook": "https://discord.com/api/webhooks/1099915080092614667/g1Y4uMQYPomsagBycATWc-IyasvyL-Npj4QcJiBsxHqexuygx6jUEzKmgEjYRCBzTGhp",
+      "wid": "1099915080092614667",
+      "channel": "1099914998488244234"
+    },
+    {
+      "name": "JMan's Server",
+      "webhook": "https://discord.com/api/webhooks/1099916576679018496/ihfC33zzsCYbG__yWk3GLbbMBEeYy3n4u3y0rq41TJfEByCWvv2Bh0e00C03zsQ5XMW6",
+      "wid": "1099916576679018496",
+      "channel": "1099916484051996725"
+    }
+  ],
+  // mijovia lobby
+  [
+    {
+      "name": "Mijovia",
+      "webhook": "https://discord.com/api/webhooks/1224873167844278364/HgVe7DDrzts5p-XbBt1A2aPBOeGT1uMCmEBlVgSkEehVBJsJ5UoEOingWwDKPORkQUaP",
+      "wid": "1224873167844278364",
+      "channel": "1216817245259432057"
+    },
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1224872389070946365/_WGeakiGEqYxALLDq6npk4NtB3plSPV5DEnQtxeYbSqPeXbyxNnqS1C_a686jlUqKXwb",
+      "wid": "1224872389070946365",
+      "channel": "1224872341172125728"
+    }
+  ],
+  // mijovia offtopic
+  [
+    {
+      "name": "Mijovia",
+      "webhook": "https://discord.com/api/webhooks/1224875371002990692/ONrAZ9Wgd61HipaUZCK9mv3rQ4bGYFg9KzsOe9JO9lkVaOjWM2ErgeAy1Z3IsvjIJqt4",
+      "wid": "1224875371002990692",
+      "channel": "1216817248107499621"
+    },
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1224876873872310415/Pebxkw8x6mZrjBD3lCcpNF2iuU__00BlhfgsNXsNKp8KhPw7A1PDp4laWXAKNWBb4dsI",
+      "wid": "1224876873872310415",
+      "channel": "1224876819417796620"
+    }
+  ],
+  // debates
+  [
+    {
+      "name": "Mijovia",
+      "webhook": "https://discord.com/api/webhooks/1224876035833725038/ewq7HhSdve5iS6TFoIuMN2tNYRUQ0nRFPLf7KAmEb1_L3Kb9OiYVQREVCrXjT6vN4BrX",
+      "wid": "1224876035833725038",
+      "channel": "1216817249562787940"
+    },
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1224877307525726219/b_WWyNQXibPCsByAZ7XEZRQafAtMYv4fB9CNlASlpZGl61INOxeKa_qKXgtLJ1UV3G6K",
+      "wid": "1224877307525726219",
+      "channel": "1224877250705362965"
+    }
+  ]
+]
