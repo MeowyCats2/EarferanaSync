@@ -117,6 +117,7 @@ client.on(Events.MessageCreate, async message => {
     if (!current) continue
     if (message.webhookId === current.webhook.split("/")[5]) return
     const currMap = {}
+    console.log(group)
     for (const channelData of group) {
       if (channelData.channel === current.channel) continue
       const webhookClient = new WebhookClient({ url: channelData.webhook });

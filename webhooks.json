@@ -24,6 +24,26 @@
       "webhook": "https://discord.com/api/webhooks/1074487042471366756/wsipKWfrX9sKKgDqMOrgJsxr39uol4oT-srsU2HYxt4RbLUrCC8o30q7MkYTDN-tdXZj",
       "wid": "1074487042471366756",
       "channel": "1032309953303678976"
+    },
+    {
+      "name": "Flynan",
+      "webhook": "https://discord.com/api/webhooks/1225297411556245545/4OleYl90u__uB59SvpgqB-v0q2B-33_75QNqUZzPRPZHQZ3CcVY5rquw_NpCKeeTffI5",
+      "channel": "1225297217070301214"
+    },
+    {
+      "name": "Filipburg",
+      "webhook": "https://discord.com/api/webhooks/1225296038911410278/rJdZXKYutI4rD9hpbc3d0WmQBwcpN__ZEr712iqYwu917sp1xpT8lb3wLjn1eEh9OcFy",    
+      "channel": "1225295821264650250"
+    },
+    {
+      "name": "Bodroumholm",
+      "webhook": "https://discord.com/api/webhooks/1225294494786654240/ii7IhbVTgBNzNUd5SNTjK9w-uNUNOSUNpxOxNJqSIzTUsq8kODmMuiqQGcVAskMr_dcU",
+      "channel": "1225294233179525271"
+    },
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1225298827997741117/mudKicWg728T57EFONkXCekNpcAEW5ZaPBzqvB6biV3ce8hDbMrEEyZNIy6Py8d361oe",
+      "channel": "1225298784230182975"
     }
   ],
   // tcc

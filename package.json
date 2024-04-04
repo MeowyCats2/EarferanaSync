@@ -11,7 +11,7 @@
   "type": "module",
   "dependencies": {
     "@types/node": "^18.0.6",
-    "discord.js": "^14.14.1",
+    "discord.js": "^14.12.1",
     "express": "^4.19.2",
     "json5": "^2.2.3",
     "simple-json-db": "^2.0.0"
