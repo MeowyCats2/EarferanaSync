@@ -1,17 +1,19 @@
 {
-  "name": "map-rp-bot-archives",
+  "name": "nodejs",
   "version": "1.0.0",
-  "description": "The archives for Map RP Bot.",
-  "main": "main.js",
+  "description": "",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
   "author": "",
   "type": "module",
   "dependencies": {
+    "@types/node": "^18.0.6",
     "discord.js": "^14.14.1",
     "express": "^4.19.2",
+    "json5": "^2.2.3",
     "simple-json-db": "^2.0.0"
-  },
-  "keywords": []
+  }
 }
