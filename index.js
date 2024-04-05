@@ -228,6 +228,7 @@ client.on(Events.MessageCreate, async message => {
 client.on(Events.MessageCreate, async message => {
   if (!message.content.startsWith("$copy") || message.author.bot) return
   const source = await client.channels.fetch(message.content.split(" ")[1])
+  await source.guild.members.fetch(message.author)
   if (!source.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission in the source.")
   if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
   let messages = [...(await source.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
