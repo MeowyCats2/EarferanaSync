@@ -1,31 +1,18 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, WebhookClient } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent } from 'discord.js';
 
 import JSONdb from 'simple-json-db';
+import JSZip from "jszip"
 import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from 'url';
-import JSON5 from "json5"
+import "./syncing.js"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const db = new JSONdb('./exeInfo.json');
 
-// Create a new client instance
-const client = new Client({
-    intents: [GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration,
-GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.MessageContent],
-  }); // creates a new bot client
-
-client.once(Events.ClientReady, c => {
-  console.log(`Ready! Logged in as ${c.user.tag}`);
-});
-
-console.log("Logging in...")
-await client.login(process.env.token)
-console.log("Logged in!")
+import client from "./client.js"
 
 const whitelist = await fs.readFile(dirname + "/whitelist.json")
 
@@ -107,66 +94,132 @@ client.on(Events.GuildBanAdd, async (ban) => {
 
 })
 
-const messageMap = new JSONdb("./map.json")
-
-const webhookData = JSON5.parse(await fs.readFile(dirname + "/webhooks.json"))
 client.on(Events.MessageCreate, async message => {
-  if (message.content === "" && message.attachments.size === 0 && message.stickers.size === 0) return
-  for (const [index, group] of webhookData.entries()) {
-    const current = group.find(webhook => webhook.channel === message.channel.id)
-    if (!current) continue
-    if (message.webhookId === current.webhook.split("/")[5]) return
-    const currMap = {}
-    console.log(group)
-    for (const channelData of group) {
-      if (channelData.channel === current.channel) continue
-      const webhookClient = new WebhookClient({ url: channelData.webhook });
-      currMap[channelData.channel] = (await webhookClient.send({
-        "content": message.content,
-        "embeds": message.embeds,
-        "allowedMentions": {
-          "parse": [],
-          "users": [],
-          "roles": []
-        },
-        "files": [...message.attachments.values(), ...message.stickers.mapValues(sticker => sticker.url).values()],
-        "username": message.author.displayName + " - " + current.name,
-        "avatarURL": message.author.avatarURL()
-      })).id
-    }
-    currMap.group = index
-    messageMap.set(message.id, currMap)
+  if (message.content !== "$archive" || message.author.bot) return
+  let messages = [...(await message.channel.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+  if (messages.length === 0) return await message.channel.send("No messages found.")
+  message.reply("Fetching messages...")
+  while (1) {
+    const fetched = [...(await message.channel.messages.fetch({"limit": 100, "before": messages[0].id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+    if (fetched.length === 0) break
+    messages.unshift(...fetched)
   }
-})
-
-client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
-  if (newMessage.content === "" && newMessage.attachments.size === 0 && newMessage.stickers.size === 0) return
-  const cached = messageMap.get(newMessage.id)
-  if (!cached) return
-  console.log(cached)
-  const group = webhookData[cached.group]
-  for (const channelData of group) {
-    const messageID = cached[channelData.channel]
-    if (!messageID) continue;
-    const webhookClient = new WebhookClient({ url: channelData.webhook });
-    await webhookClient.editMessage(messageID, {
-      "content": newMessage.content,
-      "embeds": newMessage.embeds,
-      "files": newMessage.file
+  message.reply("Parsing messages...")
+  const zip = new JSZip()
+  let parsedMessages = []
+  let authors = {}
+  for (const current of messages) {
+    const attachments = []
+    for (const attachment of current.attachments.values()) {
+      zip.file(attachment.id + "." + attachment.name.split(".").at(-1), await (await fetch(attachment.url)).arrayBuffer())
+      attachments.push({
+        "contentType": attachment.contentType,
+        "description": attachment.description,
+        "name": attachment.name,
+        "spoiler": attachment.spoiler,
+        "id": attachment.id,
+        "url": attachment.url,
+        "proxyURL": attachment.proxyURL,
+        "file": attachment.id + "." + attachment.name.split(".").at(-1)
+      })
+    }
+    const stickers = []
+    for (const sticker of current.attachments.values()) {
+      zip.file(sticker.id, await (await fetch(sticker.url)).arrayBuffer())
+      stickers.push({
+        "createdTimestamp": sticker.createdTimestamp,
+        "description": sticker.description,
+        "format": sticker.format,
+        "guildId": sticker.guildId,
+        "id": sticker.id,
+        "name": sticker.name,
+        "packId": sticker.packId,
+        "type": sticker.type,
+        "url": sticker.url
+      })
+    }
+    if (!(current.author.id in authors)) {
+      if (current.author.avatarURL()) zip.file(current.author.id, await (await fetch(current.author.avatarURL())).arrayBuffer())
+      const defaultAvatar = current.author.defaultAvatarURL.split("/").at(-1)
+      if (!zip.file(defaultAvatar)) zip.file(defaultAvatar, await (await fetch(current.author.defaultAvatarURL)).arrayBuffer())
+      authors[current.author.id] = {
+          "avatar": current.author.avatar,
+          "avatarURL": current.author.avatarURL(),
+          "avatarFile": current.author.avatarURL() ? current.author.id + "avatar" : null,
+          "bot": current.author.bot,
+          "defaultAvatarURL": current.author.defaultAvatarURL,
+          "defaultAvatarFile": current.author.defaultAvatarURL.split("/").at(-1),
+          "displayName": current.author.displayName,
+          "id": current.author.id
+        }
+    }
+    parsedMessages.push({
+      "attachments": attachments,
+      "author": current.author.id,
+      "content": current.content,
+      "createdTimestamp": current.createdTimestamp,
+      "editedTimestamp": current.editedTimestamp,
+      "embeds": current.embeds.map(embed => embed.data),
+      "id": current.id,
+      "type": current.type
     })
   }
+  message.reply("Stringifying messages...")
+  const messagesLength = messages.length
+  messages = null;
+  zip.file("messages.json", JSON.stringify(parsedMessages))
+  zip.file("authors.json", JSON.stringify(authors))
+  message.reply("Compressing...")
+  parsedMessages = null;
+  authors = null;
+  const buffer = await zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE"
+  })
+  message.reply("Uploading...")
+  await message.reply({
+    "content": messagesLength + "",
+    "files": [
+      {
+        "name": "archive.zip",
+        "attachment": buffer,
+        "description": "Archive of the messages"
+      }
+    ]
+  })
 })
-client.on(Events.MessageDelete, async message => {
-  if (message.content === "" && message.attachments.size === 0 && message.stickers.size === 0) return
-  const cached = messageMap.get(message.id)
-  if (!cached) return
-  console.log(cached)
-  const group = webhookData[cached.group]
-  for (const channelData of group) {
-    const messageID = cached[channelData.channel]
-    if (!messageID) continue;
-    const webhookClient = new WebhookClient({ url: channelData.webhook });
-    await webhookClient.deleteMessage(messageID)
+
+client.on(Events.MessageCreate, async message => {
+  if (message.content !== "$extract" || message.author.bot) return
+  if (message.attachments.size === 0) return
+  const zip = await JSZip.loadAsync(await (await fetch([...message.attachments.values()][0].url)).arrayBuffer())
+  const messages = JSON.parse(await zip.file("messages.json").async("string"))
+  const authors = JSON.parse(await zip.file("authors.json").async("string"))
+  const webhook = await message.channel.createWebhook({
+    "name": "Message Archive Extraction",
+    "reason": "Extracting message archive"
+  })
+  for (const message of messages) {
+    const files = []
+    for (const attachment of message.attachments) {
+      files.push({
+        "name": attachment.name,
+        "attachment": await zip.file(attachment.file).async("nodebuffer"),
+        "description": attachment.description
+      })
+    }
+    await webhook.send({
+      "username": authors[message.author].displayName,
+      "avatarURL": authors[message.author].avatarURL || authors[message.author].defaultAvatarURL,
+      "content": message.content,
+      "embeds": message.embeds,
+      "allowedMentions": {
+        "parse": [],
+        "users": [],
+        "roles": []
+      },
+      "files": files
+    })
   }
 })
 import express from 'express';
