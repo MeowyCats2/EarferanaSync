@@ -92,6 +92,11 @@
       "webhook": "https://discord.com/api/webhooks/1224872389070946365/_WGeakiGEqYxALLDq6npk4NtB3plSPV5DEnQtxeYbSqPeXbyxNnqS1C_a686jlUqKXwb",
       "wid": "1224872389070946365",
       "channel": "1224872341172125728"
+    },
+    {
+      "name": "Starwalk Community",
+      "webhook": "https://discord.com/api/webhooks/1225594447941730456/7WX8UbjTv8jDiC2VuYHYdiUlgDz1PKYs9yhwXuV4XBhl4VmaNWbfsGxdu4HUjODxzCkL",
+      "channel": "1225594382124585080"
     }
   ],
   // mijovia offtopic
@@ -107,6 +112,11 @@
       "webhook": "https://discord.com/api/webhooks/1224876873872310415/Pebxkw8x6mZrjBD3lCcpNF2iuU__00BlhfgsNXsNKp8KhPw7A1PDp4laWXAKNWBb4dsI",
       "wid": "1224876873872310415",
       "channel": "1224876819417796620"
+    },
+    {
+      "name": "Starwalk Community",
+      "webhook": "https://discord.com/api/webhooks/1225594952646393906/t4v8xXWNAxZIopDfMiRvank6rYLzXWgAJJR_-_y8b030_w30ujZkswlXtHmNnR6DBd8C",
+      "channel": "1225594870257684570"
     }
   ],
   // debates
@@ -122,6 +132,90 @@
       "webhook": "https://discord.com/api/webhooks/1224877307525726219/b_WWyNQXibPCsByAZ7XEZRQafAtMYv4fB9CNlASlpZGl61INOxeKa_qKXgtLJ1UV3G6K",
       "wid": "1224877307525726219",
       "channel": "1224877250705362965"
+    },
+    {
+      "name": "Starwalk Community",
+      "webhook": "https://discord.com/api/webhooks/1225595444164427857/ahcU_s97n0phabTFSVbo0ntoUVtB0niPQcDYeaNgIrmfOLFgbAEQ0pEzsVGXYWO9uY39",
+      "channel": "1225595385200906310"
+    }
+  ],
+  // Flynan
+  [
+    {
+      "name": "Flynan",
+      "webhook": "https://discord.com/api/webhooks/1145224870427377704/rNw04V4jq4ZF5rY4vqKWPRy6ZIJCYO-8cpm7fv2fCcH5-Mnw7P4idzWB28fHhczDAc8n",
+      "channel": "1099631642064199686"
+    },
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1099913624132259881/tQdfGssnpF04XraOaIybX6eGebLY9a8WP-wJA4lpi6vLN5rnJbd31tLYCrTLJB4Zs91M",
+      "channel": "1099913568285118505"
+    },
+    {
+      "name": "imulumi's Server",
+      "webhook": "https://discord.com/api/webhooks/1099914298748305449/AqS_evqG07vg8FjOZyUkPA5UZCmFcqHDyzDFVL3fHodNtr7VDlxBaeAiYdUZlpB59Pha",
+      "channel": "1099914236232216647"
+    },
+    {
+      "name": "The Mod Server",
+      "webhook": "https://discord.com/api/webhooks/1099914599442161666/gZD_i2FlDpsrd8MYXDduF2KEEWcaaSsUJB0DBG85ciUjlQn7uEGaMahMwt5EOCAp3isn",
+      "channel": "1099914541262979142"
+    },
+    {
+      "name": "The Wubbox's Cove",
+      "webhook": "https://discord.com/api/webhooks/1099916576679018496/ihfC33zzsCYbG__yWk3GLbbMBEeYy3n4u3y0rq41TJfEByCWvv2Bh0e00C03zsQ5XMW6",
+      "channel": "1099916484051996725"
+    },
+    {
+      "name": "Starwalk Community",
+      "webhook": "https://discord.com/api/webhooks/1099915080092614667/g1Y4uMQYPomsagBycATWc-IyasvyL-Npj4QcJiBsxHqexuygx6jUEzKmgEjYRCBzTGhp",
+      "channel": "1099914998488244234"
+    }
+  ],
+  // Flynan 2
+  [
+    {
+      "name": "Flynan",
+      "webhook": "https://discord.com/api/webhooks/1145228767237771325/tCb4FffbI-KGoGSSscRkM7O9yDrK3q2zw06FPeeBVG1JMGxVYm8IGVqGXfSpBtiz7aCP",
+      "channel": "1099631642064199687"
+    },
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1099917454475534436/9MQaJ7oQ_A5xoebxLYDiE-9ntfGpsXnep579ygck0lOQOqhocPmHS6sWsyzOYxQPySRq",
+      "channel": "1099917403107901470"
+    },
+    {
+      "name": "imulumi's Server",
+      "webhook": "https://discord.com/api/webhooks/1099918017871233085/wrHuWR1eAdbMF_pl2VmAjvmZ0Q5oFhqY7Q3hvXvzRADavELzgmZ83pTSGhyFFRPk05vs",
+      "channel": "1099917820101394463"
+    },
+    {
+      "name": "Starwalk Community",
+      "webhook": "https://discord.com/api/webhooks/1225590885463494767/lWoJMqBs29YjEa37TiEDA8uBSYGt55W4XxVQnVPmp-Uy7Kxm_lGhWyowNJm2uegCZYki",
+      "channel": "1225590807386390719"
+    }
+  ],
+  // Flynan drama
+  [
+    {
+      "name": "Flynan",
+      "webhook": "https://discord.com/api/webhooks/1145436475849183385/YHPmzi5QLanAbp2BoaP3DkJSzee0OVLIxuQ4N1FWn0GU0qY69dTNAbL0Ky8TZKazPoAv",
+      "channel": "1099631642064199688"
+    },
+    {
+      "name": "Earferana Chronicles",
+      "webhook": "https://discord.com/api/webhooks/1144088107432562719/h2qIHWjkVTpjmggdbn3DskCM27yJVNwbAKeEfERJag1jsoNtBbDJ4Y6idbe262GueyFu",
+      "channel": "1144087247432450118"
+    },
+    {
+      "name": "imulumi's Server",
+      "webhook": "https://discord.com/api/webhooks/1144090055720321024/WFaXOXnrheFwji81-uvB_dkMHw8XceyjYAtGj5vvIIYuZfZDB9QfApsLCwqCXT9pPdM0",
+      "channel": "1144090009603944458"
+    },
+    {
+      "name": "Starwalk Community",
+      "webhook": "https://discord.com/api/webhooks/1225593775754051634/4fVKQNc-ps3iyzvglvTW_K8v50deej32r7gDvGPgVVwz0cPyPViTHvgQrpU2t6eybY07",
+      "channel": "1225593718132834394"
     }
   ],
   // Bodroumholm logs
