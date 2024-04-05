@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField } from 'discord.js';
 
 import JSONdb from 'simple-json-db';
 import JSZip from "jszip"
@@ -96,6 +96,7 @@ client.on(Events.GuildBanAdd, async (ban) => {
 
 client.on(Events.MessageCreate, async message => {
   if (message.content !== "$archive" || message.author.bot) return
+  if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
   let messages = [...(await message.channel.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
   if (messages.length === 0) return await message.channel.send("No messages found.")
   message.reply("Fetching messages...")
@@ -192,6 +193,7 @@ client.on(Events.MessageCreate, async message => {
 client.on(Events.MessageCreate, async message => {
   if (message.content !== "$extract" || message.author.bot) return
   if (message.attachments.size === 0) return
+  if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
   const zip = await JSZip.loadAsync(await (await fetch([...message.attachments.values()][0].url)).arrayBuffer())
   const messages = JSON.parse(await zip.file("messages.json").async("string"))
   const authors = JSON.parse(await zip.file("authors.json").async("string"))
@@ -219,6 +221,39 @@ client.on(Events.MessageCreate, async message => {
         "roles": []
       },
       "files": files
+    })
+  }
+})
+
+client.on(Events.MessageCreate, async message => {
+  if (!message.content.startsWith("$copy") || message.author.bot) return
+  const source = await client.channels.fetch(message.content.split(" ")[1])
+  if (!source.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission in the source.")
+  if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
+  let messages = [...(await source.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+  if (messages.length === 0) return await message.channel.send("No messages found.")
+  await message.delete()
+  while (1) {
+    const fetched = [...(await source.messages.fetch({"limit": 100, "before": messages[0].id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+    if (fetched.length === 0) break
+    messages.unshift(...fetched)
+  }
+  const webhook = await message.channel.createWebhook({
+    "name": "Message Archive Copying",
+    "reason": "Copying messages"
+  })
+  for (const current of messages) {
+    await webhook.send({
+      "content": current.content,
+      "embeds": current.embeds,
+      "allowedMentions": {
+        "parse": [],
+        "users": [],
+        "roles": []
+      },
+      "files": [...current.attachments.values(), ...current.stickers.mapValues(sticker => sticker.url).values()],
+      "username": current.author.displayName,
+      "avatarURL": current.author.avatarURL()
     })
   }
 })
