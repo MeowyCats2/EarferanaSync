@@ -298,7 +298,7 @@ const archivalCopy = async (index, source, destination, message, webhook, start)
     await (await archivalInfoMsg()).edit(JSON.stringify(archivalInfo))
     await webhook.send({
       "content": current.content.substring(0, 2000),
-      "embeds": current.embeds,
+      "embeds": current.embeds.filter(embed => embed.data.title || embed.data.description || embed.data.footer || embed.data.thumbnail || embed.data.image || embed.data.video || embed.data.video || embed.data.fields),
       "allowedMentions": {
         "parse": [],
         "users": [],
