@@ -194,16 +194,38 @@ client.on(Events.MessageCreate, async message => {
   if (message.content !== "$extract" || message.author.bot) return
   if (message.attachments.size === 0) return
   if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
+  await archivalExtract(archivalInfo.push({}) - 1, message)
+})
+
+const archivalExtract = async (index, message, webhook, start) => {
   const zip = await JSZip.loadAsync(await (await fetch([...message.attachments.values()][0].url)).arrayBuffer())
   const messages = JSON.parse(await zip.file("messages.json").async("string"))
   const authors = JSON.parse(await zip.file("authors.json").async("string"))
-  const webhook = await message.channel.createWebhook({
+  if (!webhook) webhook = await message.channel.createWebhook({
     "name": "Message Archive Extraction",
     "reason": "Extracting message archive"
   })
-  for (const message of messages) {
+  let shouldSend = !start
+  const latestMsg = (await message.channel.messages.fetch({ limit: 1 })).first()
+  for (const current of messages) {
+    if (!shouldSend) {
+      if (start === current.id) {
+        shouldSend = true
+        if (latestMsg.content === current.content) continue
+      } else {
+        continue
+      }
+    }
+    archivalInfo[index] = {
+      "type": "extract",
+      "message": message.id,
+      "channel": message.channel.id,
+      "webhook": webhook.id,
+      "current": current.id
+    }
+    await (await archivalInfoMsg()).edit(JSON.stringify(archivalInfo))
     const files = []
-    for (const attachment of message.attachments) {
+    for (const attachment of current.attachments) {
       files.push({
         "name": attachment.name,
         "attachment": await zip.file(attachment.file).async("nodebuffer"),
@@ -211,10 +233,10 @@ client.on(Events.MessageCreate, async message => {
       })
     }
     await webhook.send({
-      "username": authors[message.author].displayName,
-      "avatarURL": authors[message.author].avatarURL || authors[message.author].defaultAvatarURL,
-      "content": message.content,
-      "embeds": message.embeds,
+      "username": authors[current.author].displayName.replace(/discord/ig, "D1scord"),
+      "avatarURL": authors[current.author].avatarURL || authors[current.author].defaultAvatarURL,
+      "content": current.content.substring(0, 2000),
+      "embeds": current.embeds,
       "allowedMentions": {
         "parse": [],
         "users": [],
@@ -223,29 +245,59 @@ client.on(Events.MessageCreate, async message => {
       "files": files
     })
   }
-})
-
+  archivalInfo[index] = null
+}
 client.on(Events.MessageCreate, async message => {
   if (!message.content.startsWith("$copy") || message.author.bot) return
   const source = await client.channels.fetch(message.content.split(" ")[1])
   await source.guild.members.fetch(message.author)
   if (!source.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission in the source.")
   if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
+  await archivalCopy(archivalInfo.push({}) - 1, source, message.channel.id, message)
+})
+
+const archivalCopy = async (index, source, destination, message, webhook, start) => {
   let messages = [...(await source.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
-  if (messages.length === 0) return await message.channel.send("No messages found.")
-  await message.delete()
+  if (messages.length === 0) {
+    if (message) return await message.channel.send("No messages found.")
+    return
+  }
+  if (message) {
+    try {
+      await message.delete()
+    } catch (e) {
+    }
+  }
   while (1) {
     const fetched = [...(await source.messages.fetch({"limit": 100, "before": messages[0].id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
     if (fetched.length === 0) break
     messages.unshift(...fetched)
   }
-  const webhook = await message.channel.createWebhook({
+  if (!webhook) webhook = await message.channel.createWebhook({
     "name": "Message Archive Copying",
     "reason": "Copying messages"
   })
+  let shouldSend = !start
+  const latestMsg = (await (await client.channels.fetch(destination)).messages.fetch({ limit: 1 })).first()
   for (const current of messages) {
+    if (!shouldSend) {
+      if (start === current.id) {
+        shouldSend = true
+        if (latestMsg.content === current.content) continue
+      } else {
+        continue
+      }
+    }
+    archivalInfo[index] = {
+      "type": "copy",
+      "source": source.id,
+      "destination": destination,
+      "webhook": webhook.id,
+      "current": current.id
+    }
+    await (await archivalInfoMsg()).edit(JSON.stringify(archivalInfo))
     await webhook.send({
-      "content": current.content,
+      "content": current.content.substring(0, 2000),
       "embeds": current.embeds,
       "allowedMentions": {
         "parse": [],
@@ -253,11 +305,19 @@ client.on(Events.MessageCreate, async message => {
         "roles": []
       },
       "files": [...current.attachments.values(), ...current.stickers.mapValues(sticker => sticker.url).values()],
-      "username": current.author.displayName,
+      "username": current.author.displayName.replace(/discord/ig, "D1scord"),
       "avatarURL": current.author.avatarURL()
     })
   }
+  archivalInfo[index] = null
+}
+
+client.on(Events.MessageCreate, async message => {
+  if (message.content !== "$clear" || message.author.bot) return
+  await (await archivalInfoMsg()).edit(JSON.stringify([]))
+  process.exit();
 })
+
 import express from 'express';
 const app = express(); 
 
@@ -268,3 +328,20 @@ app.get('/*?', (req, res) => {
 app.listen(3000, () => { // Listen on port 3000
     console.log('Listening!') // Log when listen success
 })
+
+
+const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
+
+const archivalInfo = JSON.parse((await archivalInfoMsg()).content).filter(task => task)
+
+for (const [index, task] of archivalInfo.entries()) {
+  if (task.type === "copy") {
+    try {
+      await archivalCopy(index, await client.channels.fetch(task.source), task.destination, null, (await (await client.channels.fetch(task.destination)).fetchWebhooks()).get(task.webhook), task.current)
+    } catch (e) {
+      console.error(e)
+    }
+  } else if (task.type === "extract") {
+    await archivalExtract(index, await (await client.channels.fetch(task.channel)).messages.fetch(task.message), (await (await client.channels.fetch(task.channel)).fetchWebhooks()).get(task.webhook), task.current)
+  }
+}
