@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType } from 'discord.js';
 
 import JSONdb from 'simple-json-db';
 import JSZip from "jszip"
@@ -296,6 +296,14 @@ const archivalCopy = async (index, source, destination, message, webhook, start)
       "current": current.id
     }
     await (await archivalInfoMsg()).edit(JSON.stringify(archivalInfo))
+	if (current.system) {
+		await webhook.send({
+			"content": MessageType[current.type],
+			  "username": current.author.displayName.replace(/discord/ig, "D1scord"),
+			  "avatarURL": current.author.avatarURL()
+		})
+		continue
+	}
     await webhook.send({
       "content": current.content.substring(0, 2000),
       "embeds": current.embeds.filter(embed => embed.data.title || embed.data.description || embed.data.footer || embed.data.thumbnail || embed.data.image || embed.data.video || embed.data.video || embed.data.fields),
@@ -328,7 +336,19 @@ app.get('/*?', (req, res) => {
 app.listen(3000, () => { // Listen on port 3000
     console.log('Listening!') // Log when listen success
 })
+//const rest = new REST().setToken(process.env.token);
+//console.log(JSON.stringify((await client.rest.get("/channels/1001902549248512221/messages/1227396718216351756")).poll, null, 4))
+//console.log((await (await client.channels.fetch("1001902549248512221")).messages.fetch("1227396718216351756")).poll)
 
+const disableInvites = async () => {
+	const tommorow = new Date();
+tommorow.setDate((new Date()).getDate() + 1)
+	console.log(await client.rest.put("/guilds/938799685014007828/incident-actions", {
+		"body": {"invites_disabled_until": tommorow.toISOString(), "dms_disabled_until":null}
+	}))
+};
+await disableInvites();
+setInterval(disableInvites, 60 * 60 * 12 * 1000);
 
 const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
 
