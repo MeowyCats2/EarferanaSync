@@ -339,7 +339,7 @@ app.listen(3000, () => { // Listen on port 3000
 //const rest = new REST().setToken(process.env.token);
 //console.log(JSON.stringify((await client.rest.get("/channels/1001902549248512221/messages/1227396718216351756")).poll, null, 4))
 //console.log((await (await client.channels.fetch("1001902549248512221")).messages.fetch("1227396718216351756")).poll)
-
+/*
 const disableInvites = async () => {
 	const tommorow = new Date();
 tommorow.setDate((new Date()).getDate() + 1)
@@ -348,7 +348,7 @@ tommorow.setDate((new Date()).getDate() + 1)
 	}))
 };
 await disableInvites();
-setInterval(disableInvites, 60 * 60 * 12 * 1000);
+setInterval(disableInvites, 60 * 60 * 12 * 1000);*/
 
 const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
 
