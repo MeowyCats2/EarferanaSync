@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType, Routes, SlashCommandBuilder, SlashCommandBooleanOption } from 'discord.js';
 
 import JSONdb from 'simple-json-db';
 import JSZip from "jszip"
@@ -339,16 +339,6 @@ app.listen(3000, () => { // Listen on port 3000
 //const rest = new REST().setToken(process.env.token);
 //console.log(JSON.stringify((await client.rest.get("/channels/1001902549248512221/messages/1227396718216351756")).poll, null, 4))
 //console.log((await (await client.channels.fetch("1001902549248512221")).messages.fetch("1227396718216351756")).poll)
-/*
-const disableInvites = async () => {
-	const tommorow = new Date();
-tommorow.setDate((new Date()).getDate() + 1)
-	console.log(await client.rest.put("/guilds/938799685014007828/incident-actions", {
-		"body": {"invites_disabled_until": tommorow.toISOString(), "dms_disabled_until":null}
-	}))
-};
-await disableInvites();
-setInterval(disableInvites, 60 * 60 * 12 * 1000);*/
 
 client.on(Events.MessageCreate, async message => {
   if (!message.content.startsWith("$poll") || message.author.bot) return
@@ -408,7 +398,45 @@ client.on(Events.MessageCreate, async message => {
   } catch (e) {
 	  message.reply(e.message)
   }
+});
+
+const dataMsg = await (await client.channels.fetch("1231358988461805568")).messages.fetch("1231359413852311593")
+const dataContent = JSON.parse(dataMsg.content)
+
+const performIncidentActions = async () => {
+	const tommorow = new Date();
+tommorow.setDate((new Date()).getDate() + 1)
+	for (const guild of dataContent.perpetualIncidentActions) {
+		console.log(await client.rest.put("/guilds/" + guild.guildId + "/incident-actions", {
+			"body": {"invites_disabled_until": guild.disable_invites ? tommorow.toISOString() : null, "dms_disabled_until": guild.disable_dms ? tommorow.toISOString() : null}
+		}))
+	}
+};
+if (Math.abs(dataContent.lastRun - new Date()) / 36e5 >= 12) await performIncidentActions();
+setInterval(performIncidentActions, 60 * 60 * 12 * 1000);
+
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "perpetual_incident_actions") return;
+	await interaction.deferReply();
+	const existing = dataContent.perpetualIncidentActions.find(guild => guild.guildId === interaction.guildId)
+	const guildData = {
+		"guildId": interaction.guildId,
+		"disable_invites": interaction.options.get("disable_invites")?.value ?? existing?.disable_invites ?? false,
+		"disable_dms": interaction.options.get("disable_dms")?.value ?? existing?.disable_dms ?? false
+	}
+	if (existing) {
+	const index = dataContent.perpetualIncidentActions.findIndex(guild => guild.guildId === interaction.guildId)
+	if (guildData.disable_invites || guildData.disable_dms) {
+		dataContent.perpetualIncidentActions[index] = guildData;
+		} else {
+		dataContent.perpetualIncidentActions.splice(index, 1)
+		}
+	} else if (guildData.disable_invites || guildData.disable_dms) dataContent.perpetualIncidentActions.push(guildData)
+	await dataMsg.edit(JSON.stringify(dataContent))
+	await interaction.followUp("Configured.")
 })
+
 
 const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
 
@@ -425,3 +453,23 @@ for (const [index, task] of archivalInfo.entries()) {
     await archivalExtract(index, await (await client.channels.fetch(task.channel)).messages.fetch(task.message), (await (await client.channels.fetch(task.channel)).fetchWebhooks()).get(task.webhook), task.current)
   }
 }
+
+const commands = [
+	new SlashCommandBuilder()
+	.setName("perpetual_incident_actions")
+	.setDescription("Enabling incident actions forever.")
+	.addBooleanOption(
+		new SlashCommandBooleanOption()
+		.setName("disable_invites")
+		.setDescription("Should disable invites?")
+	)
+	.addBooleanOption(
+		new SlashCommandBooleanOption()
+		.setName("disable_dms")
+		.setDescription("Should disable DMs?")
+	)
+]
+await client.rest.put(Routes.applicationCommands(client.application.id), {"body": commands})
+
+dataContent.lastRun = (new Date()).toISOString();
+await dataMsg.edit(JSON.stringify(dataContent))
