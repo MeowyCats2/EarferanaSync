@@ -362,10 +362,34 @@ client.on(Events.MessageCreate, async message => {
 		"flags": 0,
 		"poll": {
 			"question":{"text":options[0]},
-			"answers": options[1].split(";").map(answer => ({
-				"poll_media":{"text":answer}
-			})),
-			"allow_multiselect": options[2] && (options[2].toLowerCase().includes("t") || options[2].toLowerCase().includes("y") || options[2].toLowerCase().includes("multi")),
+			"answers": options[1].split(";").map(answer => {
+				const nativeEmojiMatch = answer.match(/^\s?(\p{Extended_Pictographic})/u)
+				const customEmojiMatch = answer.match(/^\s?<:.+?:([0-9]+)>/)
+				if (nativeEmojiMatch) return {
+					"poll_media": {
+						"text": answer.split(nativeEmojiMatch[0])[1],
+						"emoji": {
+						//"id":
+							"name": nativeEmojiMatch[1]
+						}
+					}
+				}
+				if (customEmojiMatch) return {
+					"poll_media": {
+						"text": answer.split(customEmojiMatch[0])[1],
+						"emoji": {
+							"id": customEmojiMatch[1],
+							"name": ""
+						}
+					}
+				}
+				return {
+					"poll_media": {
+						"text": answer
+					}
+				}
+			}),
+			"allow_multiselect": options[2] && (options[2].toLowerCase().includes("t") || options[2].toLowerCase().includes("y") || options[2].toLowerCase().includes("m")),
 			"duration": options[3] || 24,
 			"layout_type": options[4] || 1
 		}
