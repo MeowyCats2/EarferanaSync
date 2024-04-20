@@ -350,6 +350,32 @@ tommorow.setDate((new Date()).getDate() + 1)
 await disableInvites();
 setInterval(disableInvites, 60 * 60 * 12 * 1000);*/
 
+client.on(Events.MessageCreate, async message => {
+  if (!message.content.startsWith("$poll") || message.author.bot) return
+  if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) return message.reply("You need the Manage Messages permission.")
+  const options = message.content.replace(/^\$poll\s/, "").split("|")
+  if (options.length < 2) return message.reply("Not enough command options.")
+  try {
+    await client.rest.post("/channels/" + message.channel.id + "/messages", {
+	  "body": {
+		"tts": false,
+		"flags": 0,
+		"poll": {
+			"question":{"text":options[0]},
+			"answers": options[1].split(";").map(answer => ({
+				"poll_media":{"text":answer}
+			})),
+			"allow_multiselect": options[2] && (options[2].includes("y") || options[2].includes("multi")),
+			"duration": options[3] || 24,
+			"layout_type": options[4] || 1
+		}
+	  }
+    })
+  } catch (e) {
+	  message.reply(e.message)
+  }
+})
+
 const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
 
 const archivalInfo = JSON.parse((await archivalInfoMsg()).content).filter(task => task)
