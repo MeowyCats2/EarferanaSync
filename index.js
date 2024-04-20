@@ -365,6 +365,7 @@ client.on(Events.MessageCreate, async message => {
 			"answers": options[1].split(";").map(answer => {
 				const nativeEmojiMatch = answer.match(/^\s?(\p{Extended_Pictographic})/u)
 				const customEmojiMatch = answer.match(/^\s?<:.+?:([0-9]+)>/)
+				const idEmojiMatch = answer.match(/^\s?\{([0-9]+)\}/)
 				if (nativeEmojiMatch) return {
 					"poll_media": {
 						"text": answer.split(nativeEmojiMatch[0])[1],
@@ -380,6 +381,15 @@ client.on(Events.MessageCreate, async message => {
 						"emoji": {
 							"id": customEmojiMatch[1],
 							"name": ""
+						}
+					}
+				}
+				if (idEmojiMatch) return {
+					"poll_media": {
+						"text": answer.split(idEmojiMatch[0])[1],
+						"emoji": {
+							"id": idEmojiMatch[1],
+								"name": ""
 						}
 					}
 				}
