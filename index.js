@@ -365,7 +365,7 @@ client.on(Events.MessageCreate, async message => {
 			"answers": options[1].split(";").map(answer => ({
 				"poll_media":{"text":answer}
 			})),
-			"allow_multiselect": options[2] && (options[2].includes("y") || options[2].includes("multi")),
+			"allow_multiselect": options[2] && (options[2].toLowerCase().includes("t") || options[2].toLowerCase().includes("y") || options[2].toLowerCase().includes("multi")),
 			"duration": options[3] || 24,
 			"layout_type": options[4] || 1
 		}
