@@ -44,6 +44,11 @@
       "name": "Earferana Chronicles",
       "webhook": "https://discord.com/api/webhooks/1225298827997741117/mudKicWg728T57EFONkXCekNpcAEW5ZaPBzqvB6biV3ce8hDbMrEEyZNIy6Py8d361oe",
       "channel": "1225298784230182975"
+    },
+    {
+      "name": "Visadensburg",
+      "webhook": "https://discord.com/api/webhooks/1293363962716622952/703rv94hPT80C_v6VFWIp17UZJPulmBCkpucw2XHXpjkGbb1asRXMJFzYaVdg6DQCAPk",
+      "channel": "1262715137190662174"
     }
   ],
   // tcc
