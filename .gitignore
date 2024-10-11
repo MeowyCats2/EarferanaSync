@@ -132,3 +132,4 @@ dist
 # Replit
 .replit
 replit.nix
+bun.lockb

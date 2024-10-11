@@ -7,6 +7,7 @@ import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from 'url';
 import "./syncing.js"
+import { dataMsg, dataContent } from "./dataMsg.js"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -400,8 +401,6 @@ client.on(Events.MessageCreate, async message => {
   }
 });
 
-const dataMsg = await (await client.channels.fetch("1231358988461805568")).messages.fetch("1231359413852311593")
-const dataContent = JSON.parse(dataMsg.content)
 
 const performIncidentActions = async () => {
 	const tommorow = new Date();
