@@ -15,6 +15,8 @@ import client from "./client.js"
 const messageMap = new JSONdb("./map.json")
 
 
+dataContent.lastHandledMessage = {};
+await saveData()
 const relayMessage = async (message) => {
   if (message.content === "" && message.attachments.size === 0 && message.stickers.size === 0) return
   for (const [index, group] of webhookData.entries()) {
@@ -54,6 +56,7 @@ for (const group of webhookData) {
       console.log("LHM found for " + webhookData.name)
       try {
         const channel = await client.channels.fetch(webhookData.channel)
+        if (dataContent.lastHandledMessage[webhookData.channel] && await client.messages.fetch(dataContent.lastHandledMessage[webhookData.channel])) continue
         let messages = [...(await channel.messages.fetch({limit: 50, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
         if (messages.length === 0) continue
         console.log("Message found!")
