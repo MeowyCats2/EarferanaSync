@@ -192,13 +192,6 @@ client.on(Events.MessageCreate, async message => {
 })
 
 client.on(Events.MessageCreate, async message => {
-  if (message.content !== "$createwebhook" || message.author.bot) return
-  await message.channel.createWebhook({
-    "name": "Webhook",
-    "reason": "Command ran"
-  })
-})
-client.on(Events.MessageCreate, async message => {
   if (message.content !== "$extract" || message.author.bot) return
   if (message.attachments.size === 0) return
   if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
