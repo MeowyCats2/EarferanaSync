@@ -1,4 +1,4 @@
-import { Events, WebhookClient } from 'discord.js';
+import { Events, WebhookClient, Message } from 'discord.js';
 import JSONdb from 'simple-json-db';
 import JSON5 from "json5"
 
@@ -18,7 +18,75 @@ const messageMap = new JSONdb("./map.json")
 dataContent.lastHandledMessage = {};
 await saveData()
 const relayMessage = async (message) => {
-  if (message.content === "" && message.attachments.size === 0 && message.stickers.size === 0) return
+  if (message.flags.any(16384)) {
+    console.log("Forwarded message found!")
+    const rawMessage = (await client.rest.get("/channels/" + message.channel.id + "/messages/" + message.id)).message_snapshots[0].message
+    return await relayMessage(new Message(client, {
+      ...rawMessage,
+      "channel_id": message.channel.id,
+      "guild_id": message.guild.id,
+      "id": message.reference.messageId,
+      "author": await client.rest.get("/users/" + message.author.id),
+      "embeds": [...rawMessage.embeds, {
+        "type": "rich",
+        "title": "Forwarded message",
+        "description": "This message was originally a forwarded message.",
+        "author": {
+          "name": "Jump to original message",
+          "url": "https://discord.com/channels/" + (message.reference.guildId ?? "@me") + "/" + message.reference.channelId + "/" + message.reference.messageId
+        },
+        "footer": {
+          "text": message.content
+        }
+      }]
+    }))
+  }
+  let dataToSend = {
+    "content": message.content,
+    "embeds": message.embeds,
+    "allowedMentions": {
+      "parse": [],
+      "users": [],
+      "roles": []
+    },
+    "files": [...message.attachments.values(), ...message.stickers.mapValues(sticker => sticker.url).values()],
+    "avatarURL": message.author.avatarURL()
+  }
+  console.log(JSON.stringify(message))
+  if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) return
+  if (message.poll) {
+    console.log("Poll")
+    dataToSend.embeds.push({
+      "title": "Poll",
+      "author": {
+        "name": message.poll.question.text
+      },
+      "description": [...message.poll.answers.values()].map(answer => (answer.emoji ? answer.emoji + " " : "") + answer.text).join("\n"),
+      "footer": {
+        "text": message.poll.allowMultiselect ? "Multiple choice" : "Single choice"
+      },
+      "timestamp": message.poll.expiresAt.toISOString()
+    })
+    console.log(dataToSend)
+  }
+  if (message.type === 46) {
+    const pollMessage = await message.channel.messages.fetch(message.reference.messageId)
+    dataToSend.embeds.push({
+      "title": "Poll",
+      "author": {
+        "name": pollMessage.poll.question.text
+      },
+      "fields": [...pollMessage.poll.answers.values()].map(answer => ({
+        "name": (answer.emoji ? answer.emoji + " " : "") + answer.text,
+        "value": answer.voteCount
+      })),
+      "footer": {
+        "text": pollMessage.poll.allowMultiselect ? "Multiple choice" : "Single choice"
+      },
+      "timestamp": pollMessage.poll.expiresAt.toISOString()
+    })
+  }
+  console.log(dataToSend)
   for (const [index, group] of webhookData.entries()) {
     const current = group.find(webhook => webhook.channel === message.channel.id)
     if (!current) continue
@@ -28,18 +96,7 @@ const relayMessage = async (message) => {
     for (const channelData of group) {
       if (channelData.channel === current.channel) continue
       const webhookClient = new WebhookClient({ url: channelData.webhook });
-      currMap[channelData.channel] = (await webhookClient.send({
-        "content": message.content,
-        "embeds": message.embeds,
-        "allowedMentions": {
-          "parse": [],
-          "users": [],
-          "roles": []
-        },
-        "files": [...message.attachments.values(), ...message.stickers.mapValues(sticker => sticker.url).values()],
-        "username": message.author.displayName + " - " + current.name,
-        "avatarURL": message.author.avatarURL()
-      })).id
+      currMap[channelData.channel] = (await webhookClient.send({...dataToSend, "username": (message.author.displayName ?? "Unknown User") + " - " + current.name})).id
     }
     currMap.group = index
     messageMap.set(message.id, currMap)
