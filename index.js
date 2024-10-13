@@ -342,6 +342,16 @@ app.listen(3000, () => { // Listen on port 3000
 //console.log((await (await client.channels.fetch("1001902549248512221")).messages.fetch("1227396718216351756")).poll)
 
 client.on(Events.MessageCreate, async message => {
+  if (!message.content.startsWith("$editchannel") || message.author.bot) return
+  if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) return message.reply("You need the Manage Channels permission.")
+  const options = message.content.replace(/^\$editchannel\s/, "").split(" ")
+  const channelId = options[0].match(/[0-9]+/)[0]
+  const channelName = options[1]
+  const channel = await client.channels.fetch(channelId)
+  await channel.edit({"name": channelName})
+  await message.reply("Name edited!")
+})
+client.on(Events.MessageCreate, async message => {
   if (!message.content.startsWith("$poll") || message.author.bot) return
   if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageMessages)) return message.reply("You need the Manage Messages permission.")
   const options = message.content.replace(/^\$poll\s/, "").split("|")
