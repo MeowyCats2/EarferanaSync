@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, SlashCommandIntegerOption, WebhookClient } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, WebhookClient } from 'discord.js';
 
 import JSONdb from 'simple-json-db';
 import JSZip from "jszip"
@@ -625,8 +625,8 @@ const commands = [
 	new SlashCommandBuilder()
 	.setName("unlink_channel")
 	.setDescription("Removes the channel from a linked group.")
-  .addIntegerOption(
-		new SlashCommandIntegerOption()
+  .addStringOption(
+		new SlashCommandStringOption()
 		.setName("channel")
 		.setDescription("Channel (id) to be removed.")
 	)
@@ -653,8 +653,8 @@ const commands = [
 		.setDescription("ID of the group to create.")
     .setRequired(true)
   )
-  .addIntegerOption(
-		new SlashCommandIntegerOption()
+  .addStringOption(
+		new SlashCommandStringOption()
 		.setName("source_channel")
 		.setDescription("Channel (id) to be sourced from.")
 	)
