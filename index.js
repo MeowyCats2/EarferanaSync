@@ -6,8 +6,20 @@ import JSZip from "jszip"
 import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from 'url';
-import { relayMessage } from "./syncing.js"
 import { saveData, dataContent } from "./dataMsg.js"
+
+import express from 'express';
+const app = express(); 
+
+app.get('/*?', (req, res) => {
+  res.send('online')
+})
+
+app.listen(3000, () => { // Listen on port 3000
+    console.log('Listening!') // Log when listen success
+})
+
+import { relayMessage } from "./syncing.js"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -327,16 +339,6 @@ client.on(Events.MessageCreate, async message => {
   process.exit();
 })
 
-import express from 'express';
-const app = express(); 
-
-app.get('/*?', (req, res) => {
-  res.send('online')
-})
-
-app.listen(3000, () => { // Listen on port 3000
-    console.log('Listening!') // Log when listen success
-})
 //const rest = new REST().setToken(process.env.token);
 //console.log(JSON.stringify((await client.rest.get("/channels/1001902549248512221/messages/1227396718216351756")).poll, null, 4))
 //console.log((await (await client.channels.fetch("1001902549248512221")).messages.fetch("1227396718216351756")).poll)
