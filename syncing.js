@@ -110,7 +110,7 @@ for (const group of Object.values(dataContent.linkedGroups)) {
       console.log("LHM found for " + webhookData.name)
       try {
         const channel = await client.channels.fetch(webhookData.channel)
-        if (dataContent.lastHandledMessage[webhookData.channel] && await client.messages.fetch(dataContent.lastHandledMessage[webhookData.channel])) continue
+        if (dataContent.lastHandledMessage[webhookData.channel] && await channel.messages.fetch(dataContent.lastHandledMessage[webhookData.channel])) continue
         let messages = [...(await channel.messages.fetch({limit: 50, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
         if (messages.length === 0) continue
         console.log("Message found!")
