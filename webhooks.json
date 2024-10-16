@@ -1,6 +1,6 @@
-[
+{
   // Universal Counting
-  [
+  "universal_counting": [
     {
       "name": "Mylo the Cat Server",
       "webhook": "https://discord.com/api/webhooks/1025219110356922448/Bq9tXzPSHMkzQmofkVsoGDOmUqtusxYx_56wDrkMmVTWYOHNUU1Zo78C0JTHhSMyMJsu",
@@ -52,7 +52,7 @@
     }
   ],
   // tcc
-  [
+  "the_connected_chat": [
     {
       "name": "Earferana Chronicles",
       "webhook": "https://discord.com/api/webhooks/1099913624132259881/tQdfGssnpF04XraOaIybX6eGebLY9a8WP-wJA4lpi6vLN5rnJbd31tLYCrTLJB4Zs91M",
@@ -85,7 +85,7 @@
     }
   ],
   // mijovia lobby
-  [
+  "mijovia_lobby": [
     {
       "name": "Mijovia",
       "webhook": "https://discord.com/api/webhooks/1224873167844278364/HgVe7DDrzts5p-XbBt1A2aPBOeGT1uMCmEBlVgSkEehVBJsJ5UoEOingWwDKPORkQUaP",
@@ -105,7 +105,7 @@
     }
   ],
   // mijovia offtopic
-  [
+  "mijovia_offtopic": [
     {
       "name": "Mijovia",
       "webhook": "https://discord.com/api/webhooks/1224875371002990692/ONrAZ9Wgd61HipaUZCK9mv3rQ4bGYFg9KzsOe9JO9lkVaOjWM2ErgeAy1Z3IsvjIJqt4",
@@ -125,7 +125,7 @@
     }
   ],
   // debates
-  [
+  "debates": [
     {
       "name": "Mijovia",
       "webhook": "https://discord.com/api/webhooks/1224876035833725038/ewq7HhSdve5iS6TFoIuMN2tNYRUQ0nRFPLf7KAmEb1_L3Kb9OiYVQREVCrXjT6vN4BrX",
@@ -145,7 +145,7 @@
     }
   ],
   // Flynan
-  [
+  "flynan": [
     {
       "name": "Flynan",
       "webhook": "https://discord.com/api/webhooks/1145224870427377704/rNw04V4jq4ZF5rY4vqKWPRy6ZIJCYO-8cpm7fv2fCcH5-Mnw7P4idzWB28fHhczDAc8n",
@@ -178,7 +178,7 @@
     }
   ],
   // Flynan 2
-  [
+  "flynan_2": [
     {
       "name": "Flynan",
       "webhook": "https://discord.com/api/webhooks/1145228767237771325/tCb4FffbI-KGoGSSscRkM7O9yDrK3q2zw06FPeeBVG1JMGxVYm8IGVqGXfSpBtiz7aCP",
@@ -201,7 +201,7 @@
     }
   ],
   // Flynan drama
-  [
+  "flynan_drama": [
     {
       "name": "Flynan",
       "webhook": "https://discord.com/api/webhooks/1145436475849183385/YHPmzi5QLanAbp2BoaP3DkJSzee0OVLIxuQ4N1FWn0GU0qY69dTNAbL0Ky8TZKazPoAv",
@@ -224,7 +224,7 @@
     }
   ],
   // Bodroumholm logs
-  [
+  "bodroumholm_logs": [
     {
       "name": "Bodroumholm",
     "webhook": "https://discord.com/api/webhooks/1225311858563616859/ZSwyqJlAKs0K1NPEDzecs3lNjWrED0xRqlnNDKV2nl_4ECeCj-Bp0IXL0q33yWrh4K8c",
@@ -246,7 +246,7 @@
     "channel": "1225313137079746591"
     }
   ],
-  [
+  "filipburg_logs": [
     {
       "name": "Filipburg",
       "webhook": "https://discord.com/api/webhooks/1225313938384879637/b4gGN0plDy6VsRWR662QqHprUOEMdJ6fOor0GRXnbKi6qg7DpwOMPsctQCSECKCw18aq",
@@ -268,7 +268,7 @@
       "channel": "1225315274413047888"
     }
   ],
-  [
+  "flynan_logs": [
     {
       "name": "Flynan",
       "webhook": "https://discord.com/api/webhooks/1225315721031192596/zB-TqefdpTgUhRfjF1MuR7TxPGfjnyBnN7Iio7yIni1VebDpLCwqh0EQjceaAZZTslMM",
@@ -290,4 +290,4 @@
       "channel": "1225316905146126347"
     }
   ]
-]
+}

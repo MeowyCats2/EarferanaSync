@@ -1,5 +1,12 @@
 import client from "./client.js"
 
 export const dataMsg = await (await client.channels.fetch("1231358988461805568")).messages.fetch("1231359413852311593")
-export const dataContent = JSON.parse(dataMsg.content)
-export const saveData = async () => await dataMsg.edit(JSON.stringify(dataContent))
+export const dataContent = JSON.parse(await (await fetch([...dataMsg.attachments.values()][0].url)).text())
+export const saveData = async () => await dataMsg.edit({
+    "files": [
+        {
+            "attachment": Buffer.from(JSON.stringify(dataContent), "utf8"),
+            "name": "data.json"
+        }
+    ]
+})

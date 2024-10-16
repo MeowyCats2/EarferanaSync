@@ -14,10 +14,8 @@ import client from "./client.js"
 
 const messageMap = new JSONdb("./map.json")
 
-
-dataContent.lastHandledMessage = {};
 await saveData()
-const relayMessage = async (message) => {
+export const relayMessage = async (message) => {
   if (message.flags.any(16384)) {
     console.log("Forwarded message found!")
     const rawMessage = (await client.rest.get("/channels/" + message.channel.id + "/messages/" + message.id)).message_snapshots[0].message
@@ -87,7 +85,7 @@ const relayMessage = async (message) => {
     })
   }
   console.log(dataToSend)
-  for (const [index, group] of webhookData.entries()) {
+  for (const [id, group] of Object.entries(dataContent.linkedGroups)) {
     const current = group.find(webhook => webhook.channel === message.channel.id)
     if (!current) continue
     if (message.webhookId === current.webhook.split("/")[5]) return
@@ -98,7 +96,7 @@ const relayMessage = async (message) => {
       const webhookClient = new WebhookClient({ url: channelData.webhook });
       currMap[channelData.channel] = (await webhookClient.send({...dataToSend, "username": (message.author.displayName ?? "Unknown User") + " - " + current.name})).id
     }
-    currMap.group = index
+    currMap.group = id
     messageMap.set(message.id, currMap)
   }
   dataContent.lastHandledMessage[message.channel.id] = message.id;
@@ -106,8 +104,7 @@ const relayMessage = async (message) => {
 }
 client.on(Events.MessageCreate, relayMessage)
 
-const webhookData = JSON5.parse(await fs.readFile(dirname + "/webhooks.json"))
-for (const group of webhookData) {
+for (const group of Object.values(dataContent.linkedGroups)) {
   for (const webhookData of group) {
     if (dataContent.lastHandledMessage[webhookData.channel]) {
       console.log("LHM found for " + webhookData.name)
@@ -138,7 +135,7 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
   const cached = messageMap.get(newMessage.id)
   if (!cached) return
   console.log(cached)
-  const group = webhookData[cached.group]
+  const group = dataContent.linkedGroups[cached.group]
   for (const channelData of group) {
     const messageID = cached[channelData.channel]
     if (!messageID) continue;
@@ -155,7 +152,7 @@ client.on(Events.MessageDelete, async message => {
   const cached = messageMap.get(message.id)
   if (!cached) return
   console.log(cached)
-  const group = webhookData[cached.group]
+  const group = dataContent.linkedGroups[cached.group]
   for (const channelData of group) {
     const messageID = cached[channelData.channel]
     if (!messageID) continue;

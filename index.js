@@ -1,13 +1,13 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType, Routes, SlashCommandBuilder, SlashCommandBooleanOption } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, SlashCommandChannelOption, WebhookClient } from 'discord.js';
 
 import JSONdb from 'simple-json-db';
 import JSZip from "jszip"
 import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from 'url';
-import "./syncing.js"
-import { dataMsg, dataContent } from "./dataMsg.js"
+import { relayMessage } from "./syncing.js"
+import { saveData, dataContent } from "./dataMsg.js"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -442,10 +442,130 @@ client.on(Events.InteractionCreate, async interaction => {
 		dataContent.perpetualIncidentActions.splice(index, 1)
 		}
 	} else if (guildData.disable_invites || guildData.disable_dms) dataContent.perpetualIncidentActions.push(guildData)
-	await dataMsg.edit(JSON.stringify(dataContent))
+	await saveData()
 	await interaction.followUp("Configured.")
 })
-
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "create_group") return;
+	await interaction.deferReply();
+  dataContent.linkedGroups[interaction.options.get("id")?.value] = []
+	await saveData()
+	await interaction.followUp("Group created.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "link_channel") return;
+	await interaction.deferReply();
+  let hasPerms = false
+  for (const data of dataContent.linkedGroups[interaction.options.get("group_id")?.value]) {
+    const channel = await client.channels.fetch(data.channel)
+    if (channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageWebhooks)) hasPerms = true
+  }
+  if (!hasPerms) return await interaction.followUp("You need the Manage Webhooks permission in any of the channels.")
+  let replacedGroup = false
+  for (const group of Object.values(dataContent.linkedGroups)) {
+    const index = group.findIndex(channel => channel.channel === interaction.channel.id)
+    if (index === -1) continue
+    group.splice(index, 1)
+    replacedGroup = true
+  }
+  const webhook = await interaction.channel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  dataContent.linkedGroups[interaction.options.get("group_id")?.value].push({
+    "name": interaction.options.get("name")?.value ?? interaction.guild.id,
+    "webhook": webhook.url,
+    "channel": interaction.channel.id
+  })
+	await saveData()
+	await interaction.followUp(replacedGroup ? "Link replaced." : "Channel linked.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "unlink_channel") return;
+  const channelId = interaction.options.get("channel")?.value ?? interaction.channel.id
+	await interaction.deferReply();
+  let removedGroup = false
+  for (const group of Object.values(dataContent.linkedGroups)) {
+    const index = group.findIndex(channel => channel.channel === channelId)
+    if (index === -1) continue
+    if (!group.find(channel => channel.channel === interaction.channel.id)) return await interaction.followUp("Channel in wrong group.")
+    try {
+      const webhookClient = new WebhookClient({ url: group[index].webhook });
+      await webhookClient.delete("Channel unlinked.")
+    } catch (e) {
+      console.error(e)
+    }
+    group.splice(index, 1)
+    removedGroup = true
+  }
+	await saveData()
+	await interaction.followUp(removedGroup ? "Link removed." : "No link found.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "linked_channels") return;
+	await interaction.deferReply();
+  for (const [id, group] of Object.entries(dataContent.linkedGroups)) {
+    const index = group.findIndex(channel => channel.channel === interaction.channel.id)
+    if (index === -1) continue
+    return await interaction.followUp(id + "\n" + group.map(data => `<#${data.channel}> (${data.name})`).join("\n"))
+  }
+	await interaction.followUp("No link found.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "delete_group") return;
+	await interaction.deferReply();
+  const id = interaction.options.get("id")?.value
+  if (dataContent.linkedGroups[id].length > 0) return await interaction.followUp("Group has to be empty.")
+	delete dataContent.linkedGroups[id]
+  await saveData()
+	await interaction.followUp("Group deleted.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "archive_link") return;
+	await interaction.deferReply();
+  const sourceChannel = interaction.options.get("source_channel")?.channel
+  if (!sourceChannel.permissionsFor(interaction.user).has(PermissionsBitField.Flags.ManageWebhooks)) return await interaction.followUp("You need the Manage Webhooks permission in the source channel.")
+  let messages = [...(await sourceChannel.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+  if (messages.length === 0) return await interaction.followUp("No messages found.")
+  while (1) {
+    const fetched = [...(await sourceChannel.messages.fetch({"limit": 100, "before": messages[0].id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+    if (fetched.length === 0) break
+    messages.unshift(...fetched)
+  }
+  const destinationWebhook = await interaction.channel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  const sourceWebhook = await sourceChannel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  dataContent.linkedGroups[interaction.options.get("group_id")?.value] = [
+    {
+      "name": interaction.options.get("destination_name")?.value ?? interaction.guild.id,
+      "webhook": destinationWebhook.url,
+      "channel": interaction.channel.id
+    },
+    {
+      "name": interaction.options.get("source_name")?.value ?? sourceChannel.guild.id,
+      "webhook": sourceWebhook.url,
+      "channel": sourceChannel.id
+    }
+  ]
+  await saveData()
+	await interaction.followUp("Group created.")
+  for (const message of messages) {
+    await relayMessage(message);
+  }
+	await interaction.followUp("Messages relayed.")
+})
+console.log(dataContent)
 
 const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
 
@@ -477,8 +597,81 @@ const commands = [
 		.setName("disable_dms")
 		.setDescription("Should disable DMs?")
 	)
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageGuild),
+	new SlashCommandBuilder()
+	.setName("create_group")
+	.setDescription("Create a linked group.")
+	.addStringOption(
+		new SlashCommandStringOption()
+		.setName("id")
+		.setDescription("ID of the group to create.")
+    .setRequired(true)
+	),
+	new SlashCommandBuilder()
+	.setName("link_channel")
+	.setDescription("Add the channel to a linked group.")
+	.addStringOption(
+		new SlashCommandStringOption()
+		.setName("group_id")
+		.setDescription("ID of the group to add to.")
+    .setRequired(true)
+  )
+  .addStringOption(
+		new SlashCommandStringOption()
+		.setName("name")
+		.setDescription("Name to be appended to member names when relaying.")
+	)
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
+	new SlashCommandBuilder()
+	.setName("unlink_channel")
+	.setDescription("Removes the channel from a linked group.")
+  .addChannelOption(
+		new SlashCommandChannelOption()
+		.setName("channel")
+		.setDescription("Channel to be removed.")
+	)
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
+	new SlashCommandBuilder()
+	.setName("linked_channels")
+	.setDescription("Lists the channels in the group.")
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
+	new SlashCommandBuilder()
+	.setName("delete_group")
+	.setDescription("Deletes a linked group. Group has to be empty.")
+	.addStringOption(
+		new SlashCommandStringOption()
+		.setName("id")
+		.setDescription("ID of the group to create.")
+    .setRequired(true)
+	),
+	new SlashCommandBuilder()
+	.setName("archive_link")
+	.setDescription("Archive the channel and creates a linked group.")
+	.addStringOption(
+		new SlashCommandStringOption()
+		.setName("group_id")
+		.setDescription("ID of the group to create.")
+    .setRequired(true)
+  )
+  .addChannelOption(
+		new SlashCommandChannelOption()
+		.setName("source_channel")
+		.setDescription("Channel to be sourced from.")
+	)
+  .addStringOption(
+		new SlashCommandStringOption()
+		.setName("source_name")
+		.setDescription("Name to be appended to member names when relaying.")
+	)
+  .addStringOption(
+		new SlashCommandStringOption()
+		.setName("destination_name")
+		.setDescription("Name to be appended to member names when relaying.")
+	)
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
 ]
 await client.rest.put(Routes.applicationCommands(client.application.id), {"body": commands})
 
 dataContent.lastRun = (new Date()).toISOString();
-await dataMsg.edit(JSON.stringify(dataContent))
+await saveData()
+console.log("Running!")
