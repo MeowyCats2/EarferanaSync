@@ -530,6 +530,7 @@ client.on(Events.InteractionCreate, async interaction => {
 	if (interaction.commandName !== "archive_link") return;
 	await interaction.deferReply();
   const sourceChannel = await client.channels.fetch(interaction.options.get("source_channel")?.value)
+  if (!sourceChannel) return await interaction.followUp("Channel not found.")
   if (!sourceChannel.permissionsFor(interaction.user).has(PermissionsBitField.Flags.ManageWebhooks)) return await interaction.followUp("You need the Manage Webhooks permission in the source channel.")
   let messages = [...(await sourceChannel.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
   if (messages.length === 0) return await interaction.followUp("No messages found.")
