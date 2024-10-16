@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, SlashCommandChannelOption, WebhookClient } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent, PermissionsBitField, MessageType, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, SlashCommandIntegerOption, WebhookClient } from 'discord.js';
 
 import JSONdb from 'simple-json-db';
 import JSZip from "jszip"
@@ -529,7 +529,7 @@ client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
 	if (interaction.commandName !== "archive_link") return;
 	await interaction.deferReply();
-  const sourceChannel = interaction.options.get("source_channel")?.channel
+  const sourceChannel = await client.channels.fetch(interaction.options.get("source_channel")?.value)
   if (!sourceChannel.permissionsFor(interaction.user).has(PermissionsBitField.Flags.ManageWebhooks)) return await interaction.followUp("You need the Manage Webhooks permission in the source channel.")
   let messages = [...(await sourceChannel.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
   if (messages.length === 0) return await interaction.followUp("No messages found.")
@@ -625,10 +625,10 @@ const commands = [
 	new SlashCommandBuilder()
 	.setName("unlink_channel")
 	.setDescription("Removes the channel from a linked group.")
-  .addChannelOption(
-		new SlashCommandChannelOption()
+  .addIntegerOption(
+		new SlashCommandIntegerOption()
 		.setName("channel")
-		.setDescription("Channel to be removed.")
+		.setDescription("Channel (id) to be removed.")
 	)
   .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
 	new SlashCommandBuilder()
@@ -653,10 +653,10 @@ const commands = [
 		.setDescription("ID of the group to create.")
     .setRequired(true)
   )
-  .addChannelOption(
-		new SlashCommandChannelOption()
+  .addIntegerOption(
+		new SlashCommandIntegerOption()
 		.setName("source_channel")
-		.setDescription("Channel to be sourced from.")
+		.setDescription("Channel (id) to be sourced from.")
 	)
   .addStringOption(
 		new SlashCommandStringOption()
