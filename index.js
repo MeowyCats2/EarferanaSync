@@ -460,7 +460,7 @@ client.on(Events.InteractionCreate, async interaction => {
   let hasPerms = false
   for (const data of dataContent.linkedGroups[interaction.options.get("group_id")?.value]) {
     const channel = await client.channels.fetch(data.channel)
-    if (channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageWebhooks)) hasPerms = true
+    if (channel.permissionsFor(await channel.guild.members.fetch(interaction.user))?.has(PermissionsBitField.Flags.ManageWebhooks)) hasPerms = true
   }
   if (!hasPerms) return await interaction.followUp("You need the Manage Webhooks permission in any of the channels.")
   let replacedGroup = false
@@ -531,7 +531,7 @@ client.on(Events.InteractionCreate, async interaction => {
 	await interaction.deferReply();
   const sourceChannel = await client.channels.fetch(interaction.options.get("source_channel")?.value)
   if (!sourceChannel) return await interaction.followUp("Channel not found.")
-  if (!sourceChannel.permissionsFor(interaction.user).has(PermissionsBitField.Flags.ManageWebhooks)) return await interaction.followUp("You need the Manage Webhooks permission in the source channel.")
+  if (!sourceChannel.permissionsFor(await sourceChannel.guild.members.fetch(interaction.user)).has(PermissionsBitField.Flags.ManageWebhooks)) return await interaction.followUp("You need the Manage Webhooks permission in the source channel.")
   let messages = [...(await sourceChannel.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
   if (messages.length === 0) return await interaction.followUp("No messages found.")
   while (1) {
