@@ -586,7 +586,7 @@ client.on(Events.MessageCreate, async message => {
     for (const [index, emoji] of chunk.entries()) {
       zip.file(emoji.name + "-" + emoji.id + ".png", await (await fetch(emoji.imageURL())).arrayBuffer())
       if (Date.now() - lastMessage > 1000) {
-        updateMessage.edit(index + "/" + emojis.length)
+        updateMessage.edit(index + "/" + chunk.length)
         lastMessage = Date.now()
       }
     }
