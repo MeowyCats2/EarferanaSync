@@ -570,6 +570,44 @@ client.on(Events.InteractionCreate, async interaction => {
 })
 console.log(dataContent)
 
+client.on(Events.MessageCreate, async message => {
+  if (message.content !== "$exportEmojis" || message.author.bot) return
+  if (!message.channel.permissionsFor(message.author).has(PermissionsBitField.Flags.ManageGuildExpressions)) message.reply("You need the Manage Guild Expressions permission.")
+  const emojis = [...(await message.guild.emojis.fetch()).values()]
+  const chunkedEmojis = []
+  for (let i = 0; i < emojis.length; i += 50) {
+    chunkedEmojis.push(emojis.slice(i, i + 50))
+  }
+  for (const [chunkIndex, chunk] of chunkedEmojis.entries()) {
+    await message.reply("Chunk " + chunkIndex + "/" + chunkedEmojis.length)
+    let lastMessage = 0
+    const updateMessage = await message.reply("Starting...")
+    const zip = new JSZip()
+    for (const [index, emoji] of chunk.entries()) {
+      zip.file(emoji.name + "-" + emoji.id + ".png", await (await fetch(emoji.imageURL())).arrayBuffer())
+      if (Date.now() - lastMessage > 1000) {
+        updateMessage.edit(index + "/" + emojis.length)
+        lastMessage = Date.now()
+      }
+    }
+    let compressStart = Date.now()
+    updateMessage.edit("Generating archive...")
+    const editInterval = setInterval(() => updateMessage.edit("Generating archive... (" + Math.floor((Date.now() - compressStart) / 1000) + "s elapsed)"), 10000)
+    const buffer = await zip.generateAsync({
+      type: "nodebuffer",
+      compression: "STORE"
+    })
+    clearInterval(editInterval)
+    await message.reply({
+      files: [
+        {
+          "name": "emojis.zip",
+          "attachment": buffer
+        }
+      ]
+    })
+  }
+})
 const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
 
 const archivalInfo = JSON.parse((await archivalInfoMsg()).content).filter(task => task)

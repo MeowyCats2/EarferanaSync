@@ -107,7 +107,7 @@ client.on(Events.MessageCreate, relayMessage)
 for (const group of Object.values(dataContent.linkedGroups)) {
   for (const webhookData of group) {
     if (dataContent.lastHandledMessage[webhookData.channel]) {
-      console.log("LHM found for " + webhookData.name)
+      console.log("LHM found for " + webhookData.name + "(" + Object.entries(dataContent.linkedGroups).find(data => data[1] === group)[0] + ")")
       try {
         const channel = await client.channels.fetch(webhookData.channel)
         let messages = [...(await channel.messages.fetch({limit: 50, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
