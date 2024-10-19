@@ -13,9 +13,10 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 import client from "./client.js"
 
 const messageMap = new JSONdb("./map.json")
+let savingChannels = []
 
 await saveData()
-export const relayMessage = async (message) => {
+export const createDataToSend = async (message) => {
   if (message.flags.any(16384)) {
     console.log("Forwarded message found!")
     const rawMessage = (await client.rest.get("/channels/" + message.channel.id + "/messages/" + message.id)).message_snapshots[0].message
@@ -50,7 +51,6 @@ export const relayMessage = async (message) => {
     "files": [...message.attachments.values(), ...message.stickers.mapValues(sticker => sticker.url).values()],
     "avatarURL": message.author.avatarURL()
   }
-  console.log(JSON.stringify(message))
   if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) return
   if (message.poll) {
     console.log("Poll")
@@ -84,7 +84,11 @@ export const relayMessage = async (message) => {
       "timestamp": pollMessage.poll.expiresAt.toISOString()
     })
   }
-  console.log(dataToSend)
+  return dataToSend
+}
+export const relayMessage = async (message) => {
+  if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) return
+  const dataToSend = await createDataToSend(message)
   for (const [id, group] of Object.entries(dataContent.linkedGroups)) {
     const current = group.find(webhook => webhook.channel === message.channel.id)
     if (!current) continue
@@ -100,34 +104,11 @@ export const relayMessage = async (message) => {
     messageMap.set(message.id, currMap)
   }
   dataContent.lastHandledMessage[message.channel.id] = message.id;
-  await saveData()
+  await saveData();
 }
-client.on(Events.MessageCreate, relayMessage)
-
-for (const group of Object.values(dataContent.linkedGroups)) {
-  for (const webhookData of group) {
-    if (dataContent.lastHandledMessage[webhookData.channel]) {
-      console.log("LHM found for " + webhookData.name + "(" + Object.entries(dataContent.linkedGroups).find(data => data[1] === group)[0] + ")")
-      try {
-        const channel = await client.channels.fetch(webhookData.channel)
-        let messages = [...(await channel.messages.fetch({limit: 50, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
-        if (messages.length === 0) continue
-        console.log("Message found!")
-        while (1) {
-          const fetched = [...(await channel.messages.fetch({limit: 50, after: messages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
-          if (fetched.length === 0) break
-          messages.push(...fetched)
-        }
-        console.log("Relaying messages...")
-        for (const message of messages) {
-          await relayMessage(message);
-        }
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
-}
+client.on(Events.MessageCreate, (message) => {
+  if (!savingChannels.includes(message.channel.id)) relayMessage(message)
+})
 
 client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
   if (newMessage.content === "" && newMessage.attachments.size === 0 && newMessage.stickers.size === 0) return
@@ -159,3 +140,67 @@ client.on(Events.MessageDelete, async message => {
     await webhookClient.deleteMessage(messageID)
   }
 })
+
+
+for (const group of Object.values(dataContent.linkedGroups)) {
+  for (const webhookData of group) {
+    if (dataContent.lastHandledMessage[webhookData.channel]) {
+      console.log("LHM found for " + webhookData.name + "(" + Object.entries(dataContent.linkedGroups).find(data => data[1] === group)[0] + ")")
+      try {
+        const channel = await client.channels.fetch(webhookData.channel)
+        let messages = [...(await channel.messages.fetch({limit: 100, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+        if (messages.length === 0) continue
+        console.log("Message found!")
+        while (1) {
+          const fetched = [...(await channel.messages.fetch({limit: 100, after: messages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+          if (fetched.length === 0) break
+          messages.push(...fetched)
+        }
+        console.log("Relaying messages...")
+        for (const message of messages) {
+          await relayMessage(message);
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+}
+for (const group of Object.values(dataContent.linkedGroups)) {
+  for (const webhookData of group) {
+    if (dataContent.lastHandledMessage[webhookData.channel]) {
+      savingChannels.push(webhookData.channel)
+    }
+  }
+}
+const catchUpWithMessages = async () => {
+  for (const group of Object.values(dataContent.linkedGroups)) {
+    for (const webhookData of group) {
+      if (dataContent.lastHandledMessage[webhookData.channel]) {
+        console.log("LHM found for " + webhookData.name + "(" + Object.entries(dataContent.linkedGroups).find(data => data[1] === group)[0] + ")")
+        try {
+          const channel = await client.channels.fetch(webhookData.channel)
+          let messages = [...(await channel.messages.fetch({limit: 100, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+          if (messages.length === 0) {
+            savingChannels.splice(webhookData.channel, 1)
+            continue
+          }
+          console.log("Message found!")
+          while (1) {
+            const fetched = [...(await channel.messages.fetch({limit: 100, after: messages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+            if (fetched.length === 0) break
+            messages.push(...fetched)
+          }
+          console.log("Relaying messages...")
+          for (const message of messages) {
+            await relayMessage(message);
+          }
+          savingChannels.splice(webhookData.channel, 1)
+        } catch (e) {
+          console.error(e)
+        }
+      }
+    }
+  }
+}
+catchUpWithMessages()

@@ -19,7 +19,7 @@ app.listen(3000, () => { // Listen on port 3000
     console.log('Listening!') // Log when listen success
 })
 
-import { relayMessage } from "./syncing.js"
+import { relayMessage, createDataToSend } from "./syncing.js"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -568,6 +568,86 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 	await interaction.followUp("Messages relayed.")
 })
+const performServerSave = async (save) => {
+  console.log("Server save " + save.save_id)
+  const guild = await client.guilds.fetch(save.guild_id)
+  let guildMessages = []
+  for (const channel of (await guild.channels.fetch()).values()) {
+    console.log(channel.id + " performing...")
+    try {
+      const handleMessages = async (textChannel) => {
+        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+        if (channelMessages.length === 0) return
+        console.log("Message found!")
+        while (1) {
+          const fetched = [...(await textChannel.messages.fetch({limit: 100, after: channelMessages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+          if (fetched.length === 0) break
+          console.log("Fetching: " + channelMessages.length + " messages")
+          channelMessages.push(...fetched)
+        }
+        guildMessages.push(...channelMessages)
+      }
+      if (channel.messages) await handleMessages(channel)
+      if (channel.threads) {
+        for (const thread of [...(await channel.threads.fetch()).threads.values()]) {
+          await handleMessages(thread)
+        }
+      }
+    } catch (e) {
+      console.log(e)
+    }
+  }
+  guildMessages = guildMessages.sort((a, b) => a.createdAt - b.createdAt)
+  console.log("Sending messages...")
+  for (const guildMessage of guildMessages) {
+    if (guildMessage.content === "" && guildMessage.attachments.size === 0 && guildMessage.embeds.length === 0 && guildMessage.stickers.size === 0 && !guildMessage.poll) continue
+    const dataToSend = await createDataToSend(guildMessage)
+    if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) continue
+    const webhookClient = new WebhookClient({ url: save.webhook });
+    await webhookClient.send({...dataToSend, "username": (guildMessage.author.displayName ?? "Unknown User") + " - " + save.source_name + " #" + guildMessage.channel.name})
+    save.last_message = guildMessage.id;
+  }
+}
+for (const save of dataContent.serverSaves) {
+  performServerSave(save)
+};
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "server_save") return;
+	await interaction.deferReply();
+  const sourceGuild = await client.guilds.fetch(interaction.options.get("source_guild")?.value)
+  if (!sourceGuild) return await interaction.followUp("Server not found.")
+  const guildPerms = (await sourceGuild.members.fetch(interaction.user)).permissions
+  if (!guildPerms.has(PermissionsBitField.Flags.ManageGuild) || !guildPerms.has(PermissionsBitField.Flags.ManageMessages)) return await interaction.followUp("You need Manage Guild and Manage Messages perms.")
+  const webhook = await interaction.channel.createWebhook({
+    "name": "Server Save",
+    "reason": "Server save command"
+  })
+  dataContent.serverSaves.push({
+    guild_id: sourceGuild.id,
+    save_id: interaction.options.get("save_id")?.value,
+    source_name: interaction.options.get("source_name")?.value ?? sourceGuild.name,
+    webhook: webhook.url,
+    channel: interaction.channel.id,
+    last_message: 0
+  })
+  await saveData()
+  await interaction.followUp("Server save created.")
+  performServerSave(dataContent.serverSaves.find(save => save.save_id === interaction.options.get("save_id")?.value))
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "delete_server_save") return;
+	await interaction.deferReply();
+  let deleted = false
+  for (const save of dataContent.serverSaves.filter(save => save.channel === interaction.channel)) {
+    save.splice(save.indexOf(save), 1)
+    deleted = true
+  }
+  await saveData()
+  await interaction.followUp(deleted ? "Server save deleted." : "No server save found.")
+  performServerSave(dataContent.serverSaves.find(save => save.save_id === interaction.options.get("save_id")?.value))
+})
 console.log(dataContent)
 
 const archivalInfoMsg = async () => await (await client.channels.fetch("1225939024481619988")).messages.fetch("1225939476447100988")
@@ -649,7 +729,7 @@ const commands = [
 	),
 	new SlashCommandBuilder()
 	.setName("archive_link")
-	.setDescription("Archive the channel and creates a linked group.")
+	.setDescription("Archive the channel and creates a linked group. (run on destination)")
 	.addStringOption(
 		new SlashCommandStringOption()
 		.setName("group_id")
@@ -671,6 +751,30 @@ const commands = [
 		.setName("destination_name")
 		.setDescription("Name to be appended to member names when relaying.")
 	)
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
+	new SlashCommandBuilder()
+	.setName("server_save")
+	.setDescription("Puts all the messages from a server toa channel. (run on destination)")
+	.addStringOption(
+		new SlashCommandStringOption()
+		.setName("save_id")
+		.setDescription("ID of the group to create.")
+    .setRequired(true)
+  )
+  .addStringOption(
+		new SlashCommandStringOption()
+		.setName("source_guild")
+		.setDescription("Server (id) to be sourced from.")
+	)
+  .addStringOption(
+		new SlashCommandStringOption()
+		.setName("source_name")
+		.setDescription("Name to be appended to member names when relaying.")
+	)
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
+	new SlashCommandBuilder()
+	.setName("delete_server_save")
+	.setDescription("Deletes all server saves in channel.")
   .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
 ]
 await client.rest.put(Routes.applicationCommands(client.application.id), {"body": commands})
