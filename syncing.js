@@ -84,6 +84,13 @@ export const createDataToSend = async (message) => {
       "timestamp": pollMessage.poll.expiresAt.toISOString()
     })
   }
+  if (dataToSend.content.length > 2000) {
+    dataToSend.embeds.push({
+      "title": "Message",
+      "description": dataToSend.content
+    })
+    dataToSend.content = ""
+  }
   return dataToSend
 }
 export const relayMessage = async (message) => {
