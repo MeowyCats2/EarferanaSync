@@ -576,7 +576,7 @@ const performServerSave = async (save) => {
     console.log(channel.id + " performing...")
     try {
       const handleMessages = async (textChannel) => {
-        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message[textChannel.id] ?? "0"})).sort((a, b) => a.createdAt - b.createdAt).values()]
+        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message ?? "0"})).sort((a, b) => a.createdAt - b.createdAt).values()]
         if (channelMessages.length === 0) return
         console.log("Message found!")
         while (1) {
@@ -606,7 +606,7 @@ const performServerSave = async (save) => {
     if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) continue
     const webhookClient = new WebhookClient({ url: save.webhook });
     await webhookClient.send({...dataToSend, "username": (guildMessage.author.displayName ?? "Unknown User") + " - " + save.source_name + " #" + guildMessage.channel.name})
-    save.last_message[guildMessage.channel.id] = guildMessage.id;
+    save.last_message = guildMessage.id;
     await saveData()
     console.log(index + "/" + guildMessages.length + " sent")
   }
@@ -632,7 +632,7 @@ client.on(Events.InteractionCreate, async interaction => {
     source_name: interaction.options.get("source_name")?.value ?? sourceGuild.name,
     webhook: webhook.url,
     channel: interaction.channel.id,
-    last_message: {}
+    last_message: "0"
   })
   await saveData()
   await interaction.followUp("Server save created.")
