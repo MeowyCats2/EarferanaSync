@@ -148,31 +148,6 @@ client.on(Events.MessageDelete, async message => {
   }
 })
 
-
-for (const group of Object.values(dataContent.linkedGroups)) {
-  for (const webhookData of group) {
-    if (dataContent.lastHandledMessage[webhookData.channel]) {
-      console.log("LHM found for " + webhookData.name + "(" + Object.entries(dataContent.linkedGroups).find(data => data[1] === group)[0] + ")")
-      try {
-        const channel = await client.channels.fetch(webhookData.channel)
-        let messages = [...(await channel.messages.fetch({limit: 100, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
-        if (messages.length === 0) continue
-        console.log("Message found!")
-        while (1) {
-          const fetched = [...(await channel.messages.fetch({limit: 100, after: messages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
-          if (fetched.length === 0) break
-          messages.push(...fetched)
-        }
-        console.log("Relaying messages...")
-        for (const message of messages) {
-          await relayMessage(message);
-        }
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
-}
 for (const group of Object.values(dataContent.linkedGroups)) {
   for (const webhookData of group) {
     if (dataContent.lastHandledMessage[webhookData.channel]) {
