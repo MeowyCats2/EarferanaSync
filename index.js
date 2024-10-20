@@ -607,6 +607,7 @@ const performServerSave = async (save) => {
     const webhookClient = new WebhookClient({ url: save.webhook });
     await webhookClient.send({...dataToSend, "username": (guildMessage.author.displayName ?? "Unknown User") + " - " + save.source_name + " #" + guildMessage.channel.name})
     save.last_message[guildMessage.channel.id] = guildMessage.id;
+    await saveData()
     console.log(index + "/" + guildMessages.length + " sent")
   }
 }
