@@ -600,13 +600,14 @@ const performServerSave = async (save) => {
   guildMessages = guildMessages.sort((a, b) => a.createdAt - b.createdAt)
   console.log("Sending messages...")
   console.log(guildMessages.length + " to send")
-  for (const guildMessage of guildMessages) {
+  for (const [index, guildMessage] of guildMessages) {
     if (guildMessage.content === "" && guildMessage.attachments.size === 0 && guildMessage.embeds.length === 0 && guildMessage.stickers.size === 0 && !guildMessage.poll) continue
     const dataToSend = await createDataToSend(guildMessage)
     if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) continue
     const webhookClient = new WebhookClient({ url: save.webhook });
     await webhookClient.send({...dataToSend, "username": (guildMessage.author.displayName ?? "Unknown User") + " - " + save.source_name + " #" + guildMessage.channel.name})
     save.last_message = guildMessage.id;
+    console.log(index + "/" + guildMessages.length + " sent")
   }
 }
 for (const save of dataContent.serverSaves) {
