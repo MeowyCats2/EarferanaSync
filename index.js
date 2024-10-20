@@ -576,7 +576,7 @@ const performServerSave = async (save) => {
     console.log(channel.id + " performing...")
     try {
       const handleMessages = async (textChannel) => {
-        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message})).sort((a, b) => a.createdAt - b.createdAt).values()]
+        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message[textChannel.id]})).sort((a, b) => a.createdAt - b.createdAt).values()]
         if (channelMessages.length === 0) return
         console.log("Message found!")
         while (1) {
@@ -606,7 +606,7 @@ const performServerSave = async (save) => {
     if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) continue
     const webhookClient = new WebhookClient({ url: save.webhook });
     await webhookClient.send({...dataToSend, "username": (guildMessage.author.displayName ?? "Unknown User") + " - " + save.source_name + " #" + guildMessage.channel.name})
-    save.last_message = guildMessage.id;
+    save.last_message[message.channel.id] = guildMessage.id;
     console.log(index + "/" + guildMessages.length + " sent")
   }
 }
@@ -631,7 +631,7 @@ client.on(Events.InteractionCreate, async interaction => {
     source_name: interaction.options.get("source_name")?.value ?? sourceGuild.name,
     webhook: webhook.url,
     channel: interaction.channel.id,
-    last_message: 0
+    last_message: {}
   })
   await saveData()
   await interaction.followUp("Server save created.")
@@ -642,13 +642,12 @@ client.on(Events.InteractionCreate, async interaction => {
 	if (interaction.commandName !== "delete_server_save") return;
 	await interaction.deferReply();
   let deleted = false
-  for (const save of dataContent.serverSaves.filter(save => save.channel === interaction.channel)) {
-    save.splice(save.indexOf(save), 1)
+  for (const save of dataContent.serverSaves.filter(save => save.channel === interaction.channel.id)) {
+    dataContent.serverSaves.splice(dataContent.serverSaves.indexOf(save), 1)
     deleted = true
   }
   await saveData()
   await interaction.followUp(deleted ? "Server save deleted." : "No server save found.")
-  performServerSave(dataContent.serverSaves.find(save => save.save_id === interaction.options.get("save_id")?.value))
 })
 console.log(dataContent)
 
