@@ -576,7 +576,7 @@ const performServerSave = async (save) => {
     console.log(channel.id + " performing...")
     try {
       const handleMessages = async (textChannel) => {
-        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message[textChannel.id]})).sort((a, b) => a.createdAt - b.createdAt).values()]
+        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message[textChannel.id] ?? "0"})).sort((a, b) => a.createdAt - b.createdAt).values()]
         if (channelMessages.length === 0) return
         console.log("Message found!")
         while (1) {
