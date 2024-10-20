@@ -576,11 +576,11 @@ const performServerSave = async (save) => {
     console.log(channel.id + " performing...")
     try {
       const handleMessages = async (textChannel) => {
-        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message})).sort((a, b) => a.createdAt - b.createdAt).values()]
         if (channelMessages.length === 0) return
         console.log("Message found!")
         while (1) {
-          const fetched = [...(await textChannel.messages.fetch({limit: 100, after: channelMessages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+          const fetched = [...(await textChannel.messages.fetch({limit: 100, after: channelMessages.at(-1).id})).sort((a, b) => a.createdAt - b.createdAt).values()]
           if (fetched.length === 0) break
           console.log("Fetching: " + channelMessages.length + " messages")
           channelMessages.push(...fetched)
@@ -599,6 +599,7 @@ const performServerSave = async (save) => {
   }
   guildMessages = guildMessages.sort((a, b) => a.createdAt - b.createdAt)
   console.log("Sending messages...")
+  console.log(guildMessages.length + " to send")
   for (const guildMessage of guildMessages) {
     if (guildMessage.content === "" && guildMessage.attachments.size === 0 && guildMessage.embeds.length === 0 && guildMessage.stickers.size === 0 && !guildMessage.poll) continue
     const dataToSend = await createDataToSend(guildMessage)

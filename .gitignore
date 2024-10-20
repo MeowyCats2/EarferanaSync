@@ -132,4 +132,7 @@ dist
 # Replit
 .replit
 replit.nix
+
+# Misc
 bun.lockb
+map.json
