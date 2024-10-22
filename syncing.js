@@ -16,6 +16,7 @@ const messageMap = new JSONdb("./map.json")
 let savingChannels = []
 
 await saveData()
+export const appendCappedSuffix = (username, suffix) => username.split("").slice(0, 80 - suffix).join("") + suffix
 export const createDataToSend = async (message) => {
   if (message.flags.any(16384)) {
     console.log("Forwarded message found!")
@@ -105,7 +106,7 @@ export const relayMessage = async (message) => {
     for (const channelData of group) {
       if (channelData.channel === current.channel) continue
       const webhookClient = new WebhookClient({ url: channelData.webhook });
-      currMap[channelData.channel] = (await webhookClient.send({...dataToSend, "username": (message.author.displayName ?? "Unknown User") + " - " + current.name})).id
+      currMap[channelData.channel] = (await webhookClient.send({...dataToSend, "username": (appendCappedSuffix(message.author.displayName) ?? "Unknown User") + " - " + current.name})).id
     }
     currMap.group = id
     messageMap.set(message.id, currMap)

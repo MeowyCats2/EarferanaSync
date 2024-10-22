@@ -19,7 +19,7 @@ app.listen(3000, () => { // Listen on port 3000
     console.log('Listening!') // Log when listen success
 })
 
-import { relayMessage, createDataToSend } from "./syncing.js"
+import { appendCappedSuffix, relayMessage, createDataToSend } from "./syncing.js"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -605,7 +605,7 @@ const performServerSave = async (save) => {
     const dataToSend = await createDataToSend(guildMessage)
     if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) continue
     const webhookClient = new WebhookClient({ url: save.webhook });
-    await webhookClient.send({...dataToSend, "username": (guildMessage.author.displayName ?? "Unknown User") + " - " + save.source_name + " #" + guildMessage.channel.name})
+    await webhookClient.send({...dataToSend, "username": (appendCappedSuffix(guildMessage.author.displayName) ?? "Unknown User") + " - " + save.source_name + " #" + guildMessage.channel.name})
     save.last_message = guildMessage.id;
     await saveData()
     console.log(index + "/" + guildMessages.length + " sent")
