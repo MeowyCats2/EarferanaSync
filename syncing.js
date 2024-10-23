@@ -106,7 +106,7 @@ export const relayMessage = async (message) => {
     for (const channelData of group) {
       if (channelData.channel === current.channel) continue
       const webhookClient = new WebhookClient({ url: channelData.webhook });
-      currMap[channelData.channel] = (await webhookClient.send({...dataToSend, "username": (appendCappedSuffix(message.author.displayName) ?? "Unknown User") + " - " + current.name})).id
+      currMap[channelData.channel] = (await webhookClient.send({...dataToSend, "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + current.name))})).id
     }
     currMap.group = id
     messageMap.set(message.id, currMap)
