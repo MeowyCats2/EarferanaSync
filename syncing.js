@@ -16,7 +16,7 @@ const messageMap = new JSONdb("./map.json")
 let savingChannels = []
 
 await saveData()
-export const appendCappedSuffix = (username, suffix) => username.split("").slice(0, 80 - suffix).join("") + suffix
+export const appendCappedSuffix = (username, suffix) => username.split("").slice(0, 80 - suffix.length).join("") + suffix
 export const createDataToSend = async (message) => {
   if (message.flags.any(16384)) {
     console.log("Forwarded message found!")
