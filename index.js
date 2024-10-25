@@ -703,7 +703,8 @@ const commands = [
 		.setName("id")
 		.setDescription("ID of the group to create.")
     .setRequired(true)
-	),
+	)
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
 	new SlashCommandBuilder()
 	.setName("link_channel")
 	.setDescription("Add the channel to a linked group.")
