@@ -451,9 +451,19 @@ client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
 	if (interaction.commandName !== "create_group") return;
 	await interaction.deferReply();
-  dataContent.linkedGroups[interaction.options.get("id")?.value] = []
+  const webhook = await interaction.channel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  dataContent.linkedGroups[interaction.options.get("id")?.value] = [
+    {
+      "name": interaction.options.get("name")?.value ?? interaction.guild.id,
+      "webhook": webhook.url,
+      "channel": interaction.channel.id
+    }
+  ]
 	await saveData()
-	await interaction.followUp("Group created.")
+	await interaction.followUp("Group created. Channel linked to group.")
 })
 client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
@@ -464,6 +474,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const channel = await client.channels.fetch(data.channel)
     if (channel.permissionsFor(await channel.guild.members.fetch(interaction.user))?.has(PermissionsBitField.Flags.ManageWebhooks)) hasPerms = true
   }
+  if (dataContent.linkedGroups[interaction.options.get("group_id")?.value].length === 0) hasPerms = true
   if (!hasPerms) return await interaction.followUp("You need the Manage Webhooks permission in any of the channels.")
   let replacedGroup = false
   for (const group of Object.values(dataContent.linkedGroups)) {
