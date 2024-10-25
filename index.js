@@ -451,6 +451,7 @@ client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
 	if (interaction.commandName !== "create_group") return;
 	await interaction.deferReply();
+  if (interaction.options.get("id")?.value in dataContent.linkedGroups) return await interaction.reply("Group of id already exists.")
   const webhook = await interaction.channel.createWebhook({
     "name": "Message Linking",
     "reason": "Command ran to link channel."
