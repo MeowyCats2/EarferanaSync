@@ -189,7 +189,7 @@ const catchUpWithMessages = async () => {
 catchUpWithMessages()
 
 client.on(Events.MessageCreate, async (message) => {
-  const serverSave = data.serverSaves.find(save => save.guild_id === message.guild.id)
+  const serverSave = dataContent.serverSaves.find(save => save.guild_id === message.guild.id)
   if (!serverSave) return
   if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) return
   const dataToSend = await createDataToSend(message)
