@@ -610,6 +610,7 @@ const performServerSave = async (save) => {
       console.log(e)
     }
   }
+  savingServers.splice(savingServers.indexOf(save.save_id), 1)
   if (guild.id in queuedServerSaveMessages) guildMessages.push(...queuedServerSaveMessages[guild.id])
   guildMessages = guildMessages.sort((a, b) => a.createdAt - b.createdAt)
   console.log("Sending messages...")
