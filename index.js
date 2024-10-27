@@ -19,7 +19,7 @@ app.listen(3000, () => { // Listen on port 3000
     console.log('Listening!') // Log when listen success
 })
 
-import { appendCappedSuffix, relayMessage, createDataToSend } from "./syncing.js"
+import { appendCappedSuffix, relayMessage, createDataToSend, queuedServerSaveMessages, savingServers } from "./syncing.js"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -582,6 +582,7 @@ client.on(Events.InteractionCreate, async interaction => {
 })
 const performServerSave = async (save) => {
   console.log("Server save " + save.save_id)
+  savingServers.push(save.save_id)
   const guild = await client.guilds.fetch(save.guild_id)
   let guildMessages = []
   for (const channel of (await guild.channels.fetch()).values()) {
@@ -609,6 +610,7 @@ const performServerSave = async (save) => {
       console.log(e)
     }
   }
+  if (guild.id in queuedServerSaveMessages) guildMessages.push(...queuedServerSaveMessages[guild.id])
   guildMessages = guildMessages.sort((a, b) => a.createdAt - b.createdAt)
   console.log("Sending messages...")
   console.log(guildMessages.length + " to send")

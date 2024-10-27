@@ -14,6 +14,9 @@ import client from "./client.js"
 
 const messageMap = new JSONdb("./map.json")
 let savingChannels = []
+export let savingServers = []
+const queuedMessages = {}
+export const queuedServerSaveMessages = {}
 
 await saveData()
 export const appendCappedSuffix = (username, suffix) => username.split("").slice(0, 80 - suffix.length).join("") + suffix
@@ -115,7 +118,12 @@ export const relayMessage = async (message) => {
   await saveData();
 }
 client.on(Events.MessageCreate, (message) => {
-  if (!savingChannels.includes(message.channel.id)) relayMessage(message)
+  if (savingChannels.includes(message.channel.id)) {
+    if (!(message.channel.id in queuedMessages)) queuedMessages[message.channel.id] = []
+    queuedMessages[message.channel.id].push(message)
+    return
+  }
+  relayMessage(message)
 })
 
 client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
@@ -156,41 +164,50 @@ for (const group of Object.values(dataContent.linkedGroups)) {
     }
   }
 }
-const catchUpWithMessages = async () => {
-  for (const group of Object.values(dataContent.linkedGroups)) {
-    for (const webhookData of group) {
-      if (dataContent.lastHandledMessage[webhookData.channel]) {
-        console.log("LHM found for " + webhookData.name + "(" + Object.entries(dataContent.linkedGroups).find(data => data[1] === group)[0] + ")")
-        try {
-          const channel = await client.channels.fetch(webhookData.channel)
-          let messages = [...(await channel.messages.fetch({limit: 100, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
-          if (messages.length === 0) {
-            savingChannels.splice(webhookData.channel, 1)
-            continue
-          }
-          console.log("Message found!")
-          while (1) {
-            const fetched = [...(await channel.messages.fetch({limit: 100, after: messages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
-            if (fetched.length === 0) break
-            messages.push(...fetched)
-          }
-          console.log("Relaying messages...")
-          for (const message of messages) {
-            await relayMessage(message);
-          }
+const catchUpWithMessages = async (group) => {
+  for (const webhookData of group) {
+    if (dataContent.lastHandledMessage[webhookData.channel]) {
+      console.log("LHM found for " + webhookData.name + "(" + Object.entries(dataContent.linkedGroups).find(data => data[1] === group)[0] + ")")
+      try {
+        const channel = await client.channels.fetch(webhookData.channel)
+        let messages = [...(await channel.messages.fetch({limit: 100, after: dataContent.lastHandledMessage[webhookData.channel]})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+        if (messages.length === 0) {
           savingChannels.splice(webhookData.channel, 1)
-        } catch (e) {
-          console.error(e)
+          continue
         }
+        console.log("Message found!")
+        while (1) {
+          const fetched = [...(await channel.messages.fetch({limit: 100, after: messages.at(-1).id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+          if (fetched.length === 0) break
+          messages.push(...fetched)
+        }
+        console.log("Relaying messages...")
+        for (const message of messages) {
+          await relayMessage(message);
+        }
+        savingChannels.splice(webhookData.channel, 1)
+        if (webhookData.channel in queuedMessages) {
+          for (const message of queuedMessages[webhookData.channel]) {
+            relayMessage(message)
+          }
+        }
+      } catch (e) {
+        console.error(e)
       }
     }
   }
 }
-catchUpWithMessages()
+for (const group of Object.values(dataContent.linkedGroups)) {
+  catchUpWithMessages(group)
+}
 
 client.on(Events.MessageCreate, async (message) => {
   const serverSave = dataContent.serverSaves.find(save => save.guild_id === message.guild.id)
   if (!serverSave) return
+  if (savingServers.includes(serverSave.save_id)) {
+    if (!(serverSave.save_id in queuedServerSaveMessages)) queuedServerSaveMessages[serverSave.save_id] = []
+    queuedServerSaveMessages[serverSave.save_id].push(message)
+  }
   if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) return
   const dataToSend = await createDataToSend(message)
   if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) return
