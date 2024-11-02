@@ -2,7 +2,7 @@
   "name": "nodejs",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -10,11 +10,18 @@
   "author": "",
   "type": "module",
   "dependencies": {
-    "@types/node": "^18.0.6",
-    "discord.js": "^14.12.1",
+    "discord.js": "15.0.0-dev.1730030704-ed78e4570",
     "express": "^4.19.2",
     "json5": "^2.2.3",
     "jszip": "^3.10.1",
     "simple-json-db": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/express": "^5.0.0",
+    "@types/node": "^18.0.6"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
   }
 }
