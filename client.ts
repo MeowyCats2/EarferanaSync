@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Client, GatewayIntentBits, Partials, Events, UserFlags, AuditLogEvent } from 'discord.js';
+import { Client, GatewayIntentBits, Events } from 'discord.js';
 
 // Create a new client instance
 const client = new Client({

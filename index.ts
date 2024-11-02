@@ -1,6 +1,6 @@
 // Require the necessary discord.js classes
-import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, DMChannel } from 'discord.js';
-import type { Guild, User, Message } from "discord.js"
+import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel } from 'discord.js';
+import type { Guild, User } from "discord.js"
 
 import JSONdb from 'simple-json-db';
 import fs from "fs/promises"
