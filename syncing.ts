@@ -1,9 +1,6 @@
 import { Events, WebhookClient, Message, PermissionsBitField } from "discord.js";
 import type { WebhookMessageCreateOptions, MessageSnapshot, Embed, APIEmbed, TextChannel, TextBasedChannel } from "discord.js"
 import JSONdb from 'simple-json-db';
-import JSON5 from "json5"
-
-import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from 'url';
 

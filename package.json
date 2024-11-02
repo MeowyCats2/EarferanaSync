@@ -12,7 +12,6 @@
   "dependencies": {
     "discord.js": "15.0.0-dev.1730030704-ed78e4570",
     "express": "^4.19.2",
-    "json5": "^2.2.3",
     "jszip": "^3.10.1",
     "simple-json-db": "^2.0.0"
   },
