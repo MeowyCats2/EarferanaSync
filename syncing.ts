@@ -124,7 +124,7 @@ interface RelayItem {
 }
 
 export const relayMessage = async (message: Message) => {
-  if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) return
+  if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll && !message.flags.any(16384)) return
   const dataToSend = await createDataToSend(message)
   for (const [id, group] of Object.entries(dataContent.linkedGroups as Record<string, RelayItem[]>)) {
     const current = group.find(webhook => webhook.channel === message.channel.id)
