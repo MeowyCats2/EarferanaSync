@@ -206,7 +206,7 @@ client.on(Events.MessageCreate, async (message) => {
   if (!serverSave) return
   if (savingServers.includes(serverSave.save_id)) {
     if (!(serverSave.save_id in queuedServerSaveMessages)) queuedServerSaveMessages[serverSave.save_id] = []
-    queuedServerSaveMessages[serverSave.save_id].push(message)
+    return queuedServerSaveMessages[serverSave.save_id].push(message)
   }
   if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) return
   const dataToSend = await createDataToSend(message)
@@ -216,3 +216,224 @@ client.on(Events.MessageCreate, async (message) => {
   serverSave.last_message = message.id;
   await saveData()
 })
+
+
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "create_group") return;
+	await interaction.deferReply();
+  if (interaction.options.get("id")?.value in dataContent.linkedGroups) return await interaction.reply("Group of id already exists.")
+  const webhook = await interaction.channel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  dataContent.linkedGroups[interaction.options.get("id")?.value] = [
+    {
+      "name": interaction.options.get("name")?.value ?? interaction.guild.id,
+      "webhook": webhook.url,
+      "channel": interaction.channel.id
+    }
+  ]
+	await saveData()
+	await interaction.followUp("Group created. Channel linked to group.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "link_channel") return;
+	await interaction.deferReply();
+  let hasPerms = false
+  for (const data of dataContent.linkedGroups[interaction.options.get("group_id")?.value]) {
+    const channel = await client.channels.fetch(data.channel)
+    if (channel.permissionsFor(await channel.guild.members.fetch(interaction.user))?.has(PermissionsBitField.Flags.ManageWebhooks)) hasPerms = true
+  }
+  if (dataContent.linkedGroups[interaction.options.get("group_id")?.value].length === 0) hasPerms = true
+  if (!hasPerms) return await interaction.followUp("You need the Manage Webhooks permission in any of the channels.")
+  let replacedGroup = false
+  for (const group of Object.values(dataContent.linkedGroups)) {
+    const index = group.findIndex(channel => channel.channel === interaction.channel.id)
+    if (index === -1) continue
+    group.splice(index, 1)
+    replacedGroup = true
+  }
+  const webhook = await interaction.channel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  dataContent.linkedGroups[interaction.options.get("group_id")?.value].push({
+    "name": interaction.options.get("name")?.value ?? interaction.guild.id,
+    "webhook": webhook.url,
+    "channel": interaction.channel.id
+  })
+	await saveData()
+	await interaction.followUp(replacedGroup ? "Link replaced." : "Channel linked.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "unlink_channel") return;
+  const channelId = interaction.options.get("channel")?.value ?? interaction.channel.id
+	await interaction.deferReply();
+  let removedGroup = false
+  for (const group of Object.values(dataContent.linkedGroups)) {
+    const index = group.findIndex(channel => channel.channel === channelId)
+    if (index === -1) continue
+    if (!group.find(channel => channel.channel === interaction.channel.id)) return await interaction.followUp("Channel in wrong group.")
+    try {
+      const webhookClient = new WebhookClient({ url: group[index].webhook });
+      await webhookClient.delete("Channel unlinked.")
+    } catch (e) {
+      console.error(e)
+    }
+    group.splice(index, 1)
+    removedGroup = true
+  }
+	await saveData()
+	await interaction.followUp(removedGroup ? "Link removed." : "No link found.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "linked_channels") return;
+	await interaction.deferReply();
+  for (const [id, group] of Object.entries(dataContent.linkedGroups)) {
+    const index = group.findIndex(channel => channel.channel === interaction.channel.id)
+    if (index === -1) continue
+    return await interaction.followUp(id + "\n" + group.map(data => `<#${data.channel}> (${data.name})`).join("\n"))
+  }
+	await interaction.followUp("No link found.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "delete_group") return;
+	await interaction.deferReply();
+  const id = interaction.options.get("id")?.value
+  if (dataContent.linkedGroups[id].length > 0) return await interaction.followUp("Group has to be empty.")
+	delete dataContent.linkedGroups[id]
+  await saveData()
+	await interaction.followUp("Group deleted.")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "archive_link") return;
+	await interaction.deferReply();
+  const sourceChannel = await client.channels.fetch(interaction.options.get("source_channel")?.value)
+  if (!sourceChannel) return await interaction.followUp("Channel not found.")
+  if (!sourceChannel.permissionsFor(await sourceChannel.guild.members.fetch(interaction.user)).has(PermissionsBitField.Flags.ManageWebhooks)) return await interaction.followUp("You need the Manage Webhooks permission in the source channel.")
+  let messages = [...(await sourceChannel.messages.fetch({"limit": 100})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+  if (messages.length === 0) return await interaction.followUp("No messages found.")
+  while (1) {
+    const fetched = [...(await sourceChannel.messages.fetch({"limit": 100, "before": messages[0].id})).sort((a, b) => b.createdAt - a.createdAt).values()].reverse()
+    if (fetched.length === 0) break
+    messages.unshift(...fetched)
+  }
+  const destinationWebhook = await interaction.channel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  const sourceWebhook = await sourceChannel.createWebhook({
+    "name": "Message Linking",
+    "reason": "Command ran to link channel."
+  })
+  dataContent.linkedGroups[interaction.options.get("group_id")?.value] = [
+    {
+      "name": interaction.options.get("destination_name")?.value ?? interaction.guild.id,
+      "webhook": destinationWebhook.url,
+      "channel": interaction.channel.id
+    },
+    {
+      "name": interaction.options.get("source_name")?.value ?? sourceChannel.guild.id,
+      "webhook": sourceWebhook.url,
+      "channel": sourceChannel.id
+    }
+  ]
+  await saveData()
+	await interaction.followUp("Group created.")
+  for (const message of messages) {
+    await relayMessage(message);
+  }
+	await interaction.followUp("Messages relayed.")
+})
+const performServerSave = async (save) => {
+  console.log("Server save " + save.save_id)
+  savingServers.push(save.save_id)
+  const guild = await client.guilds.fetch(save.guild_id)
+  let guildMessages = []
+  for (const channel of (await guild.channels.fetch()).values()) {
+    console.log(channel.id + " performing...")
+    try {
+      const handleMessages = async (textChannel) => {
+        let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: save.last_message ?? "0"})).sort((a, b) => a.createdAt - b.createdAt).values()]
+        if (channelMessages.length === 0) return
+        console.log("Message found!")
+        while (1) {
+          const fetched = [...(await textChannel.messages.fetch({limit: 100, after: channelMessages.at(-1).id})).sort((a, b) => a.createdAt - b.createdAt).values()]
+          if (fetched.length === 0) break
+          console.log("Fetching: " + channelMessages.length + " messages")
+          channelMessages.push(...fetched)
+        }
+        guildMessages.push(...channelMessages)
+      }
+      if (channel.messages) await handleMessages(channel)
+      if (channel.threads) {
+        for (const thread of [...(await channel.threads.fetch()).threads.values()]) {
+          await handleMessages(thread)
+        }
+      }
+    } catch (e) {
+      console.log(e)
+    }
+  }
+  savingServers.splice(savingServers.indexOf(save.save_id), 1)
+  if (guild.id in queuedServerSaveMessages) guildMessages.push(...queuedServerSaveMessages[guild.id])
+  guildMessages = guildMessages.sort((a, b) => a.createdAt - b.createdAt)
+  console.log("Sending messages...")
+  console.log(guildMessages.length + " to send")
+  for (const [index, guildMessage] of guildMessages.entries()) {
+    if (guildMessage.content === "" && guildMessage.attachments.size === 0 && guildMessage.embeds.length === 0 && guildMessage.stickers.size === 0 && !guildMessage.poll) continue
+    const dataToSend = await createDataToSend(guildMessage)
+    if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) continue
+    const webhookClient = new WebhookClient({ url: save.webhook });
+    await webhookClient.send({...dataToSend, "username": appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + guildMessage.channel.name)})
+    save.last_message = guildMessage.id;
+    await saveData()
+    console.log(index + "/" + guildMessages.length + " sent")
+  }
+}
+for (const save of dataContent.serverSaves) {
+  performServerSave(save)
+};
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "server_save") return;
+	await interaction.deferReply();
+  const sourceGuild = await client.guilds.fetch(interaction.options.get("source_guild")?.value)
+  if (!sourceGuild) return await interaction.followUp("Server not found.")
+  const guildPerms = (await sourceGuild.members.fetch(interaction.user)).permissions
+  if (!guildPerms.has(PermissionsBitField.Flags.ManageGuild) || !guildPerms.has(PermissionsBitField.Flags.ManageMessages)) return await interaction.followUp("You need Manage Guild and Manage Messages perms.")
+  const webhook = await interaction.channel.createWebhook({
+    "name": "Server Save",
+    "reason": "Server save command"
+  })
+  dataContent.serverSaves.push({
+    guild_id: sourceGuild.id,
+    save_id: interaction.options.get("save_id")?.value,
+    source_name: interaction.options.get("source_name")?.value ?? sourceGuild.name,
+    webhook: webhook.url,
+    channel: interaction.channel.id,
+    last_message: "0"
+  })
+  await saveData()
+  await interaction.followUp("Server save created.")
+  performServerSave(dataContent.serverSaves.find(save => save.save_id === interaction.options.get("save_id")?.value))
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "delete_server_save") return;
+	await interaction.deferReply();
+  let deleted = false
+  for (const save of dataContent.serverSaves.filter(save => save.channel === interaction.channel.id)) {
+    dataContent.serverSaves.splice(dataContent.serverSaves.indexOf(save), 1)
+    deleted = true
+  }
+  await saveData()
+  await interaction.followUp(deleted ? "Server save deleted." : "No server save found.")
+})
+console.log(dataContent)
