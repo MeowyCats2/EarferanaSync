@@ -30,6 +30,7 @@ export const createDataToSend = async (message: DataMessage | Message): Promise<
     console.log("Forwarded message found!")
     const messageSnapshot = [...message.messageSnapshots.values()][0]
     return await createDataToSend({...messageSnapshot,
+      "author": message.author,
       "embeds": [...messageSnapshot.embeds, {
         "title": "Forwarded message",
         "description": "This message was originally a forwarded message.",
