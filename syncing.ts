@@ -7,11 +7,11 @@ import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from 'url';
 
-import { dataContent, saveData } from "./dataMsg.js"
+import { dataContent, saveData } from "./dataMsg.ts"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
-import client from "./client.js"
+import client from "./client.ts"
 
 const messageMap = new JSONdb("./map.json")
 let savingChannels: string[] = []

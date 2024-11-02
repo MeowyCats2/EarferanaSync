@@ -3,11 +3,10 @@ import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCom
 import type { Guild, User, Message } from "discord.js"
 
 import JSONdb from 'simple-json-db';
-import JSZip from "jszip"
 import fs from "fs/promises"
 import path from "path"
 import { fileURLToPath } from 'url';
-import { saveData, dataContent } from "./dataMsg.js"
+import { saveData, dataContent } from "./dataMsg.ts"
 
 import express from 'express';
 const app = express(); 
@@ -20,13 +19,14 @@ app.listen(3000, () => { // Listen on port 3000
     console.log('Listening!') // Log when listen success
 })
 
-import "./archival.js"
+import "./archival.ts"
+import "./syncing.ts"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const db = new JSONdb('./exeInfo.json');
 
-import client from "./client.js"
+import client from "./client.ts"
 
 const whitelist = await fs.readFile(dirname + "/whitelist.json")
 
