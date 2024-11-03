@@ -450,7 +450,13 @@ const performServerSave = async (save: ServerSave) => {
       }
     }
     const webhookClient = earliestWebhook!
-    await webhookClient.send({...dataToSend, "username": appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + (guildMessage.channel as TextChannel).name)})
+    const sendMessage = async () => await webhookClient.send({...dataToSend, "username": appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + (guildMessage.channel as TextChannel).name)})
+    try {
+      await sendMessage()
+    } catch (e) {
+      console.error(e)
+      await sendMessage()
+    }
     save.last_message = guildMessage.id;
     if (Date.now() - lastDataUpdate > 2000) {
       lastDataUpdate = Date.now();

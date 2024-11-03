@@ -3,6 +3,7 @@ import type { GuildChannel, Message, Webhook, TextChannel, TextBasedChannel } fr
 import JSZip from "jszip"
 
 import client from "./client.ts"
+import { appendCappedSuffix } from "./syncing.ts"
 client.on(Events.MessageCreate, async message => {
     if (message.content !== "$archive" || message.author.bot) return
     if (!(message.channel as GuildChannel).permissionsFor(message.author)?.has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
@@ -233,35 +234,14 @@ const archivalCopy = async (index: number, source: TextBasedChannel, destination
     archivalInfo[index] = null
 }
 
-
-client.on(Events.MessageCreate, async message => {
-    if (!message.content.startsWith("$chunked_archive ") || message.author.bot) return
-    if (!(message.channel as GuildChannel).permissionsFor(message.author)?.has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
-    const channelId = message.content.split(" ")[1].match(/[0-9]+/)?.[0]
-    if (!channelId) return await message.reply("Invalid channel id")
-    const outputChannel = await client.channels.fetch(channelId) as TextChannel | null
-    if (!outputChannel) return await message.reply("Invalid channel!")
-    const botPerms = (outputChannel as GuildChannel).permissionsFor(outputChannel.guild.members.me!)
-    if (!botPerms?.has(PermissionsBitField.Flags.SendMessages) || !botPerms?.has(PermissionsBitField.Flags.AttachFiles)) message.reply("Bot no perms?")    
-    let messages = [...(await message.channel.messages.fetch({"limit": 100})).sort((a, b) => b.createdTimestamp - a.createdTimestamp).values()].reverse()
-    if (messages.length === 0) return await message.channel.send("No messages found.")
-    const messageUpdate = await message.reply("Fetching messages...")
+const archivalChunkedArchive = async (messages: Message[], messageUpdate: Message, outputChannel: TextChannel, message: Message, multichannel: boolean) => {
     let lastUpdate = Date.now()
-    while (1) {
-        const fetched = [...(await message.channel.messages.fetch({"limit": 100, "before": messages[0].id})).sort((a, b) => b.createdTimestamp - a.createdTimestamp).values()].reverse()
-        if (fetched.length === 0) break
-        messages.unshift(...fetched)
-        if (Date.now() - lastUpdate > 2000) {
-            lastUpdate = Date.now()
-            messageUpdate.edit("Fetching messages... " + messages.length)
-        }
-    }
     const chunks = []
     for (let i = 0; i < Math.floor(messages.length / 500); i++) {
         chunks.push(messages.slice(i * 500, i * 500 + 500))
     }
     for (let chunk of chunks) {
-        messageUpdate.edit("Parsing messages...")
+        messageUpdate.edit("Uploading attachments...")
         const zip = new JSZip()
         let parsedMessages = []
         let authors: Record<string, object> = {}
@@ -304,7 +284,17 @@ client.on(Events.MessageCreate, async message => {
                 })
             }
             if (!(current.author.id in authors)) {
-            if (current.author.avatarURL()) zip.file(current.author.id, await (await fetch(current.author.avatarURL()!)).arrayBuffer())
+            if (current.author.avatarURL()) {
+                await outputChannel.send({
+                    "content": current.author.id,
+                    "files": [
+                        {
+                            "attachment": Buffer.from(await (await fetch(current.author.avatarURL()!)).arrayBuffer()),
+                            "name": current.author.avatar ?? "avatar"
+                        }
+                    ]
+                })
+            }
             const defaultAvatar = current.author.defaultAvatarURL.split("/").at(-1)
             if (defaultAvatar && !zip.file(defaultAvatar)) zip.file(defaultAvatar, await (await fetch(current.author.defaultAvatarURL)).arrayBuffer())
             authors[current.author.id] = {
@@ -321,6 +311,7 @@ client.on(Events.MessageCreate, async message => {
             parsedMessages.push({
                 "attachments": attachments,
                 "author": current.author.id,
+                "channelName": (current.channel as TextChannel).name,
                 "content": current.content,
                 "createdTimestamp": current.createdTimestamp,
                 "editedTimestamp": current.editedTimestamp,
@@ -332,6 +323,7 @@ client.on(Events.MessageCreate, async message => {
         messageUpdate.edit("Stringifying messages...")
         const messagesLength = chunk.length
         chunk = [];
+        zip.file("options.json", JSON.stringify({multichannel}))
         zip.file("messages.json", JSON.stringify(parsedMessages))
         zip.file("authors.json", JSON.stringify(authors))
         messageUpdate.edit("Compressing...")
@@ -362,7 +354,81 @@ client.on(Events.MessageCreate, async message => {
             ]
         })
     }
-    messageUpdate.edit("Finished!")
+}
+
+client.on(Events.MessageCreate, async message => {
+    if (!message.content.startsWith("$chunked_archive ") || message.author.bot) return
+    if (!(message.channel as GuildChannel).permissionsFor(message.author)?.has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
+    const channelId = message.content.split(" ")[1].match(/[0-9]+/)?.[0]
+    if (!channelId) return await message.reply("Invalid channel id")
+    const outputChannel = await client.channels.fetch(channelId) as TextChannel | null
+    if (!outputChannel) return await message.reply("Invalid channel!")
+    const botPerms = (outputChannel as GuildChannel).permissionsFor(outputChannel.guild.members.me!)
+    if (!botPerms?.has(PermissionsBitField.Flags.SendMessages) || !botPerms?.has(PermissionsBitField.Flags.AttachFiles)) message.reply("Bot no perms?")  
+    let messages = [...(await message.channel.messages.fetch({"limit": 100})).sort((a, b) => b.createdTimestamp - a.createdTimestamp).values()].reverse()
+    if (messages.length === 0) return await message.reply("No messages found.")
+    const messageUpdate = await message.reply("Fetching messages...")
+    let lastUpdate = Date.now()
+    while (1) {
+        const fetched = [...(await message.channel.messages.fetch({"limit": 100, "before": messages[0].id})).sort((a, b) => b.createdTimestamp - a.createdTimestamp).values()].reverse()
+        if (fetched.length === 0) break
+        messages.unshift(...fetched)
+        if (Date.now() - lastUpdate > 2000) {
+            lastUpdate = Date.now()
+            messageUpdate.edit("Fetching messages... " + messages.length)
+        }
+    }
+    await archivalChunkedArchive(messages, messageUpdate, outputChannel, message, false)
+    message.reply("Finished!")
+})
+
+
+client.on(Events.MessageCreate, async message => {
+    if (!message.content.startsWith("$chunked_server_archive ") || message.author.bot) return
+    if (!(message.channel as GuildChannel).permissionsFor(message.author)?.has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
+    const channelId = message.content.split(" ")[1].match(/[0-9]+/)?.[0]
+    if (!channelId) return await message.reply("Invalid channel id")
+    const outputChannel = await client.channels.fetch(channelId) as TextChannel | null
+    if (!outputChannel) return await message.reply("Invalid channel!")
+    const botPerms = (outputChannel as GuildChannel).permissionsFor(outputChannel.guild.members.me!)
+    if (!botPerms?.has(PermissionsBitField.Flags.SendMessages) || !botPerms?.has(PermissionsBitField.Flags.AttachFiles)) message.reply("Bot no perms?")  
+    const messageUpdate = await message.reply("Fetching messages...")
+    let lastUpdate = Date.now()
+    const guild = message.guild!
+    let guildMessages: Message[] = []
+    const channelList = [...(await guild.channels.fetch()).values()]
+    for (const [index, channel] of channelList.entries()) {
+        console.log(channel!.id + " performing...")
+        try {
+            const handleMessages = async (textChannel: TextBasedChannel) => {
+                let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: "0"})).sort((a, b) => a.createdTimestamp - b.createdTimestamp).values()]
+                if (channelMessages.length === 0) return
+                console.log("Message found!")
+                while (1) {
+                    const fetched = [...(await textChannel.messages.fetch({limit: 100, after: channelMessages.at(-1)!.id})).sort((a, b) => a.createdTimestamp - b.createdTimestamp).values()]
+                    if (fetched.length === 0) break
+                    console.log("Fetching: " + channelMessages.length + " messages")
+                    channelMessages.push(...fetched)
+                }
+                guildMessages.push(...channelMessages)
+            }
+            if ("messages" in channel!) await handleMessages(channel as TextBasedChannel)
+            if ("threads" in channel!) {
+                for (const thread of [...(await channel.threads.fetch()).threads.values()]) {
+                    await handleMessages(thread)
+                }
+            }
+            if (Date.now() - lastUpdate > 2000) {
+                lastUpdate = Date.now()
+                messageUpdate.edit("Fetching messages... " + guildMessages.length + " messages of " + Math.floor(index / channelList.length * 100) + "%")
+            }
+        } catch (e) {
+            console.log(e)
+        }
+    }
+    guildMessages = guildMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp)
+    await archivalChunkedArchive(guildMessages, messageUpdate, outputChannel, message, true)
+    message.reply("Finished!")
 })
 
 const archivalChunkedExtract = async (index: number, source: TextBasedChannel, destination: string, message: Message<boolean> | null, webhook?: Webhook, start?: string) => {
@@ -393,6 +459,8 @@ const archivalChunkedExtract = async (index: number, source: TextBasedChannel, d
         if (archiveMessage.attachments.size < 1) continue
         const zip = await JSZip.loadAsync(await (await fetch([...archiveMessage.attachments.values()][0].url)).arrayBuffer())
         if (!zip.file("messages.json") || !zip.file("authors.json")) continue
+        const optionsFile = zip.file("authors.json")
+        const options = optionsFile ? JSON.parse(await optionsFile.async("string")) : {"multichannel": false}
         const messages = JSON.parse(await zip.file("messages.json")!.async("string"))
         const authors = JSON.parse(await zip.file("authors.json")!.async("string"))
         let shouldSend = !start
@@ -423,8 +491,10 @@ const archivalChunkedExtract = async (index: number, source: TextBasedChannel, d
                     "description": attachment.description
                 })
             }
+            const authorName = authors[current.author].displayName.replace(/discord/ig, "D1scord")
+            if (!current.content && current.embeds.length === 0 && files.length === 0) continue;
             await webhook!.send({
-                "username": authors[current.author].displayName.replace(/discord/ig, "D1scord"),
+                "username": options.multichannel ? appendCappedSuffix(authorName, " - #" + current.channelName) : authorName,
                 "avatarURL": authors[current.author].avatarURL || authors[current.author].defaultAvatarURL,
                 "content": current.content.substring(0, 2000),
                 "embeds": current.embeds,
