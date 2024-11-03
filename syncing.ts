@@ -421,7 +421,7 @@ const performServerSave = async (save: ServerSave) => {
   guildMessages = guildMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp)
   console.log("Sending messages...")
   console.log(guildMessages.length + " to send")
-  const lastSent: Record<string, Date> = {}
+  const lastSent: Record<string, number> = {}
   const webhookList = []
   webhookList.push(new WebhookClient({ url: save.webhook }))
   if (save.additional_webhooks) webhookList.push(...save.additional_webhooks.map(webhook => new WebhookClient({ url: webhook })))
@@ -453,6 +453,7 @@ const performServerSave = async (save: ServerSave) => {
     save.last_message = guildMessage.id;
     await saveData()
     console.log(index + "/" + guildMessages.length + " sent")
+    lastSent[webhookList.indexOf(earliestWebhook!)] = Date.now()
   }
 }
 for (const save of dataContent.serverSaves) {
