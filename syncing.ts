@@ -451,7 +451,7 @@ const performServerSave = async (save: ServerSave) => {
     const webhookClient = earliestWebhook!
     await webhookClient.send({...dataToSend, "username": appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + (guildMessage.channel as TextChannel).name)})
     save.last_message = guildMessage.id;
-    await saveData()
+    saveData()
     console.log(index + "/" + guildMessages.length + " sent")
     lastSent[webhookList.indexOf(earliestWebhook!)] = Date.now()
   }
