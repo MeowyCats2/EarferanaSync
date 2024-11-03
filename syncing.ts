@@ -424,6 +424,7 @@ const performServerSave = async (save: ServerSave) => {
   const lastSent: Record<string, number> = {}
   const webhookList = []
   webhookList.push(new WebhookClient({ url: save.webhook }))
+  let lastDataUpdate = Date.now()
   if (save.additional_webhooks) webhookList.push(...save.additional_webhooks.map(webhook => new WebhookClient({ url: webhook })))
   for (const [index, guildMessage] of guildMessages.entries()) {
     if (guildMessage.content === "" && guildMessage.attachments.size === 0 && guildMessage.embeds.length === 0 && guildMessage.stickers.size === 0 && !guildMessage.poll) continue
@@ -451,7 +452,10 @@ const performServerSave = async (save: ServerSave) => {
     const webhookClient = earliestWebhook!
     await webhookClient.send({...dataToSend, "username": appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + (guildMessage.channel as TextChannel).name)})
     save.last_message = guildMessage.id;
-    saveData()
+    if (Date.now() - lastDataUpdate > 2000) {
+      lastDataUpdate = Date.now();
+      saveData();
+    }
     console.log(index + "/" + guildMessages.length + " sent")
     lastSent[webhookList.indexOf(earliestWebhook!)] = Date.now()
   }
