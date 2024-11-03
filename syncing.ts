@@ -230,6 +230,7 @@ interface ServerSave {
   save_id: string,
   source_name: string,
   webhook: string,
+  additional_webhooks?: string[],
   channel: string,
   last_message: string
 }
@@ -420,11 +421,34 @@ const performServerSave = async (save: ServerSave) => {
   guildMessages = guildMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp)
   console.log("Sending messages...")
   console.log(guildMessages.length + " to send")
+  const lastSent: Record<string, Date> = {}
+  const webhookList = []
+  webhookList.push(new WebhookClient({ url: save.webhook }))
+  if (save.additional_webhooks) webhookList.push(...save.additional_webhooks.map(webhook => new WebhookClient({ url: webhook })))
   for (const [index, guildMessage] of guildMessages.entries()) {
     if (guildMessage.content === "" && guildMessage.attachments.size === 0 && guildMessage.embeds.length === 0 && guildMessage.stickers.size === 0 && !guildMessage.poll) continue
     const dataToSend = await createDataToSend(guildMessage)
     if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) continue
-    const webhookClient = new WebhookClient({ url: save.webhook });
+    let earliestTime = null
+    let earliestWebhook = null
+    for (const [index, webhook] of webhookList.entries()) {
+      if (!earliestWebhook) {
+        earliestTime = lastSent[index]
+        earliestWebhook = webhook;
+        continue;
+      }
+      if (!earliestTime) break
+      if (!(index in lastSent)) {
+        earliestTime = lastSent[index]
+        earliestWebhook = webhook;
+        break
+      }
+      if (lastSent[index] < earliestTime) {
+        earliestTime = lastSent[index]
+        earliestWebhook = webhook;
+      }
+    }
+    const webhookClient = earliestWebhook!
     await webhookClient.send({...dataToSend, "username": appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + (guildMessage.channel as TextChannel).name)})
     save.last_message = guildMessage.id;
     await saveData()
@@ -446,11 +470,22 @@ client.on(Events.InteractionCreate, async interaction => {
     "name": "Server Save",
     "reason": "Server save command"
   })
+  const additionalWebhookCount = interaction.options.getInteger("additional_webhooks")
+  const additionalWebhooks = []
+  if (additionalWebhookCount) {
+    for (let i = 0; i < additionalWebhookCount; i++) {
+      additionalWebhooks.push(await (interaction.channel as TextChannel).createWebhook({
+        "name": "Additional Server Save",
+        "reason": "Server save command"
+      }))
+    }
+  }
   dataContent.serverSaves.push({
     guild_id: sourceGuild.id,
     save_id: interaction.options.get("save_id")?.value,
     source_name: interaction.options.get("source_name")?.value ?? sourceGuild.name,
     webhook: webhook.url,
+    additional_webhooks: additionalWebhooks.map(webhook => webhook.url),
     channel: interaction.channel!.id,
     last_message: "0"
   })

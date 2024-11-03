@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel } from 'discord.js';
+import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption } from 'discord.js';
 import type { Guild, User } from "discord.js"
 
 import JSONdb from 'simple-json-db';
@@ -323,8 +323,14 @@ const commands = [
 		new SlashCommandStringOption()
 		.setName("save_id")
 		.setDescription("ID of the group to create.")
-    .setRequired(true)
-  )
+		.setRequired(true)
+	)
+	.addIntegerOption(
+		new SlashCommandIntegerOption()
+		.setName("additional_webhooks")
+		.setDescription("Number of additional webhooks to create.")
+		.setMaxValue(9)
+	)
   .addStringOption(
 		new SlashCommandStringOption()
 		.setName("source_guild")
