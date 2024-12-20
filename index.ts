@@ -20,13 +20,14 @@ app.listen(3000, () => { // Listen on port 3000
 })
 
 import "./archival.ts"
-import "./syncing.ts"
+//import "./syncing.ts"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const db = new JSONdb('./exeInfo.json');
 
 import client from "./client.ts"
+client.setMaxListeners(0);
 
 const whitelist = await fs.readFile(dirname + "/whitelist.json")
 

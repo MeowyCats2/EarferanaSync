@@ -1,5 +1,6 @@
 import { Events, PermissionsBitField, MessageType } from 'discord.js';
 import type { GuildChannel, Message, Webhook, TextChannel, TextBasedChannel } from "discord.js"
+import { mkdir } from "node:fs/promises";
 import JSZip from "jszip"
 
 import client from "./client.ts"
@@ -312,6 +313,7 @@ const archivalChunkedArchive = async (messages: Message[], messageUpdate: Messag
                 "attachments": attachments,
                 "author": current.author.id,
                 "channelName": (current.channel as TextChannel).name,
+                "channelId": current.channel.id,
                 "content": current.content,
                 "createdTimestamp": current.createdTimestamp,
                 "editedTimestamp": current.editedTimestamp,
@@ -428,6 +430,132 @@ client.on(Events.MessageCreate, async message => {
     }
     guildMessages = guildMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp)
     await archivalChunkedArchive(guildMessages, messageUpdate, outputChannel, message, true)
+    message.reply("Finished!")
+})
+
+
+client.on(Events.MessageCreate, async message => {
+    if (message.content !== "$server_archive" || message.author.bot) return
+    if (!(message.channel as GuildChannel).permissionsFor(message.author)?.has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
+    const messageUpdate = await message.reply("Fetching messages...")
+    let lastUpdate = Date.now()
+    const guild = message.guild!
+    let guildMessages: Message[] = []
+    const channelList = [...(await guild.channels.fetch()).values()]
+    for (const [index, channel] of channelList.entries()) {
+        console.log(channel!.id + " performing...")
+        try {
+            const handleMessages = async (textChannel: TextBasedChannel) => {
+                let channelMessages = [...(await textChannel.messages.fetch({limit: 100, after: "0"})).sort((a, b) => a.createdTimestamp - b.createdTimestamp).values()]
+                if (channelMessages.length === 0) return
+                console.log("Message found!")
+                while (1) {
+                    const fetched = [...(await textChannel.messages.fetch({limit: 100, after: channelMessages.at(-1)!.id})).sort((a, b) => a.createdTimestamp - b.createdTimestamp).values()]
+                    if (fetched.length === 0) break
+                    console.log("Fetching: " + channelMessages.length + " messages")
+                    channelMessages.push(...fetched)
+                    if (Date.now() - lastUpdate > 2000) {
+                        lastUpdate = Date.now()
+                        messageUpdate.edit("Fetching messages... " + guildMessages.length + " messages at " + Math.floor(index / channelList.length * 100) + "%")
+                    }
+                }
+                guildMessages.push(...channelMessages)
+            }
+            if ("messages" in channel!) await handleMessages(channel as TextBasedChannel)
+            if ("threads" in channel!) {
+                for (const thread of [...(await channel.threads.fetch()).threads.values()]) {
+                    await handleMessages(thread)
+                }
+            }
+            if (Date.now() - lastUpdate > 2000) {
+                lastUpdate = Date.now()
+                messageUpdate.edit("Fetching messages... " + guildMessages.length + " messages at " + Math.floor(index / channelList.length * 100) + "%")
+            }
+        } catch (e) {
+            console.log(e)
+        }
+    }
+    guildMessages = guildMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp)
+    const parseUpdate = await message.reply("Downloading attachments and avatars...")
+    const files: Record<string, ArrayBufferLike | string> = {}
+    let parsedMessages = []
+    let authors: Record<string, object> = {}
+    for (const [index, current] of guildMessages.entries()) {
+        const attachments = []
+        for (const attachment of current.attachments.values()) {
+            files[attachment.id + "." + attachment.name.split(".").at(-1)] = await (await fetch(attachment.url)).arrayBuffer()
+            attachments.push({
+                "contentType": attachment.contentType,
+                "description": attachment.description,
+                "name": attachment.name,
+                "spoiler": attachment.spoiler,
+                "id": attachment.id,
+                "url": attachment.url,
+                "proxyURL": attachment.proxyURL,
+                "file": attachment.id + "." + attachment.name.split(".").at(-1)
+            })
+        }
+        const stickers = []
+        for (const sticker of current.stickers.values()) {
+            files[sticker.id] = await (await fetch(sticker.url)).arrayBuffer()
+            stickers.push({
+                "createdTimestamp": sticker.createdTimestamp,
+                "description": sticker.description,
+                "format": sticker.format,
+                "guildId": sticker.guildId,
+                "id": sticker.id,
+                "name": sticker.name,
+                "packId": sticker.packId,
+                "type": sticker.type,
+                "url": sticker.url
+            })
+        }
+        if (!(current.author.id in authors)) {
+        if (current.author.avatarURL()) files[current.author.id] = await (await fetch(current.author.avatarURL()!)).arrayBuffer()
+        const defaultAvatar = current.author.defaultAvatarURL.split("/").at(-1)
+        if (defaultAvatar && !(defaultAvatar in files)) files[defaultAvatar] = await (await fetch(current.author.defaultAvatarURL)).arrayBuffer()
+        authors[current.author.id] = {
+                "avatar": current.author.avatar,
+                "avatarURL": current.author.avatarURL(),
+                "avatarFile": current.author.avatarURL() ? current.author.id + "avatar" : null,
+                "bot": current.author.bot,
+                "defaultAvatarURL": current.author.defaultAvatarURL,
+                "defaultAvatarFile": current.author.defaultAvatarURL.split("/").at(-1),
+                "displayName": current.author.displayName,
+                "id": current.author.id
+            }
+        }
+        parsedMessages.push({
+            "attachments": attachments,
+            "author": current.author.id,
+            "channelName": (current.channel as TextChannel).name,
+            "channelId": current.channel.id,
+            "content": current.content,
+            "createdTimestamp": current.createdTimestamp,
+            "editedTimestamp": current.editedTimestamp,
+            "embeds": current.embeds.map(embed => embed.data),
+            "id": current.id,
+            "type": current.type
+        })
+        if (Date.now() - lastUpdate > 2000) {
+            lastUpdate = Date.now()
+            parseUpdate.edit("Downloading attachments and avatars... " + index + " messages at " + Math.floor(index / guildMessages.length * 100) + "%")
+        }
+    }
+    message.reply("Stringifying messages...")
+    const messagesLength = guildMessages.length
+    guildMessages = [];
+    files["options.json"] = JSON.stringify({"multichannel": true})
+    files["messages.json"] = JSON.stringify(parsedMessages)
+    files["authors.json"] = JSON.stringify(authors)
+    message.reply("Writing...")
+    parsedMessages = [];
+    authors = {};
+    await mkdir("./output")
+    for (const [name, data] of Object.entries(files)) {
+        console.log(name)
+        await Bun.write("./output/" + name, data)
+    }
     message.reply("Finished!")
 })
 

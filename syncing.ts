@@ -1,5 +1,5 @@
-import { Events, WebhookClient, Message, PermissionsBitField } from "discord.js";
-import type { WebhookMessageCreateOptions, MessageSnapshot, Embed, APIEmbed, TextChannel, TextBasedChannel } from "discord.js"
+import { Events, WebhookClient, Message, PermissionsBitField, GuildPremiumTier } from "discord.js";
+import type { WebhookMessageCreateOptions, MessageSnapshot, Embed, APIEmbed, TextChannel, TextBasedChannel, Attachment, Guild } from "discord.js"
 import JSONdb from 'simple-json-db';
 import path from "path"
 import { fileURLToPath } from 'url';
@@ -24,98 +24,153 @@ interface DataMessage extends Omit<MessageSnapshot, "embeds"> {
 interface DataWebhookMessage extends Omit<WebhookMessageCreateOptions, "embeds"> {
   embeds: (Embed | APIEmbed)[]
 }
-export const appendCappedSuffix = (username: string, suffix: string) => username.split("").slice(0, 80 - suffix.length).join("") + suffix
+
+const defaultUploadLimit = 10
+
+const getUploadLimitForGuild = (guild: Guild | null) => {
+  if (!guild) return defaultUploadLimit;
+  switch (guild.premiumTier) {
+    case GuildPremiumTier.Tier3: return 100;
+    case GuildPremiumTier.Tier2: return 50;
+    default: return defaultUploadLimit;
+  };
+};
+
+export const appendCappedSuffix = (username: string, suffix: string) => suffix.length < 75 ? username.split("").slice(0, 80 - suffix.length).join("") + suffix : username.split("").slice(0, 40).join("") + suffix.split("").slice(0, 40).join("")
 export const createDataToSend = async (message: DataMessage | Message): Promise<DataWebhookMessage> => {
-  if (message.flags.any(16384) && message.messageSnapshots) {
-    console.log("Forwarded message found!")
-    const messageSnapshot = [...message.messageSnapshots.values()][0]
-    return await createDataToSend({...messageSnapshot,
-      "author": message.author,
-      "embeds": [...messageSnapshot.embeds, {
-        "title": "Forwarded message",
-        "description": "This message was originally a forwarded message.",
+  try {
+    if (message.flags.any(16384) && message.messageSnapshots) {
+      console.log("Forwarded message found!")
+      const messageSnapshot = [...message.messageSnapshots.values()][0]
+      return await createDataToSend({...messageSnapshot,
+        "author": message.author,
+        "embeds": [...messageSnapshot.embeds, {
+          "title": "Forwarded message",
+          "description": "This message was originally a forwarded message.",
+          "author": {
+            "name": "Jump to original message",
+            "url": "https://discord.com/channels/" + (message.reference?.guildId ?? "@me") + "/" + message.reference?.channelId + "/" + message.reference?.messageId
+          },
+          "footer": {
+            "text": message.content
+          }
+        }]
+      })
+    }
+    const attachments: Attachment[] = [];
+    let skippedAttachment = false;
+    for (const attachment of message.attachments.values()) {
+      if (attachment.size < getUploadLimitForGuild(message.guild) * 1e+6) {
+        attachments.push(attachment)
+      } else {
+        skippedAttachment = true;
+      }
+    }
+    let dataToSend: DataWebhookMessage = {
+      "content": message.content,
+      "embeds": message.embeds,
+      "allowedMentions": {
+        "parse": [],
+        "users": [],
+        "roles": []
+      },
+      "files": [...attachments, ...message.stickers.mapValues(sticker => sticker.url).values()],
+      "avatarURL": message.author?.avatarURL() ?? undefined
+    }
+    if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) {
+      dataToSend.embeds.push({
+        "title": "Notice",
+        "description": "This was originally an empty message."
+      })
+      return dataToSend;
+    }
+    if (skippedAttachment) {
+      dataToSend.embeds.push({
+        "title": "Notice",
+        "description": "A large file was skipped."
+      })
+    }
+    if (message.poll) {
+      console.log("Poll")
+      dataToSend.embeds.push({
+        "title": "Poll",
         "author": {
-          "name": "Jump to original message",
-          "url": "https://discord.com/channels/" + (message.reference?.guildId ?? "@me") + "/" + message.reference?.channelId + "/" + message.reference?.messageId
+          "name": message.poll.question.text
         },
+        "description": [...message.poll.answers.values()].map(answer => (answer.emoji ? answer.emoji + " " : "") + answer.text).join("\n"),
         "footer": {
-          "text": message.content
+          "text": message.poll.allowMultiselect ? "Multiple choice" : "Single choice"
+        },
+        "timestamp": message.poll.expiresAt.toISOString()
+      })
+      console.log(dataToSend)
+    }
+    if (message.type === 46) {
+      if (!message.channel || !message.reference || !message.reference.messageId) {
+        dataToSend.embeds.push({
+          "title": "Error",
+          "description": "Reference not found."
+        })
+        return dataToSend;
+      }
+      try {
+        const pollMessage = await message.channel.messages.fetch(message.reference.messageId)
+        if (!pollMessage.poll) {
+          dataToSend.embeds.push({
+            "title": "Error",
+            "description": "Poll not found."
+          })
+          return dataToSend;
         }
-      }]
-    })
-  }
-  let dataToSend: DataWebhookMessage = {
-    "content": message.content,
-    "embeds": message.embeds,
-    "allowedMentions": {
-      "parse": [],
-      "users": [],
-      "roles": []
-    },
-    "files": [...message.attachments.values(), ...message.stickers.mapValues(sticker => sticker.url).values()],
-    "avatarURL": message.author?.avatarURL() ?? undefined
-  }
-  if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll) {
-    dataToSend.embeds.push({
-      "title": "Notice",
-      "description": "This was originally an empty message."
-    })
-    return dataToSend;
-  }
-  if (message.poll) {
-    console.log("Poll")
-    dataToSend.embeds.push({
-      "title": "Poll",
-      "author": {
-        "name": message.poll.question.text
-      },
-      "description": [...message.poll.answers.values()].map(answer => (answer.emoji ? answer.emoji + " " : "") + answer.text).join("\n"),
-      "footer": {
-        "text": message.poll.allowMultiselect ? "Multiple choice" : "Single choice"
-      },
-      "timestamp": message.poll.expiresAt.toISOString()
-    })
-    console.log(dataToSend)
-  }
-  if (message.type === 46) {
-    if (!message.channel || !message.reference || !message.reference.messageId) {
-      dataToSend.embeds.push({
-        "title": "Error",
-        "description": "Reference not found."
-      })
-      return dataToSend;
+        dataToSend.embeds.push({
+          "title": "Poll",
+          "author": {
+            "name": pollMessage.poll.question.text
+          },
+          "fields": [...pollMessage.poll.answers.values()].map(answer => ({
+            "name": (answer.emoji ? answer.emoji + " " : "") + answer.text,
+            "value": answer.voteCount + ""
+          })),
+          "footer": {
+            "text": pollMessage.poll.allowMultiselect ? "Multiple choice" : "Single choice"
+          },
+          "timestamp": pollMessage.poll.expiresAt.toISOString()
+        })
+      } catch (e) {
+        console.error(e)
+      }
     }
-    const pollMessage = await message.channel.messages.fetch(message.reference.messageId)
-    if (!pollMessage.poll) {
+    if (typeof dataToSend?.content === "string" && dataToSend?.content.length > 2000) {
       dataToSend.embeds.push({
-        "title": "Error",
-        "description": "Poll not found."
+        "title": "Message",
+        "description": dataToSend.content
       })
-      return dataToSend;
+      dataToSend.content = ""
     }
-    dataToSend.embeds.push({
-      "title": "Poll",
-      "author": {
-        "name": pollMessage.poll.question.text
-      },
-      "fields": [...pollMessage.poll.answers.values()].map(answer => ({
-        "name": (answer.emoji ? answer.emoji + " " : "") + answer.text,
-        "value": answer.voteCount + ""
-      })),
-      "footer": {
-        "text": pollMessage.poll.allowMultiselect ? "Multiple choice" : "Single choice"
-      },
-      "timestamp": pollMessage.poll.expiresAt.toISOString()
-    })
+    return dataToSend
+  } catch (e) {
+    console.error("An error ocurred while creating data. Trying again.")
+    console.error(e)
+    try {
+      return await createDataToSend(message);
+    } catch (e) {
+      console.error("Failed to create data.")
+      return {
+        "content": message.content,
+        "embeds": [...message.embeds, {
+          "title": "Internal error",
+          "description": "An internal error occurred while processing this message."
+        }],
+        "allowedMentions": {
+          "parse": [],
+          "users": [],
+          "roles": []
+        },
+        "files": [...message.attachments.values(), ...message.stickers.mapValues(sticker => sticker.url).values()],
+        "avatarURL": message.author?.avatarURL() ?? undefined
+      }
+    }
   }
-  if (typeof dataToSend?.content === "string" && dataToSend?.content.length > 2000) {
-    dataToSend.embeds.push({
-      "title": "Message",
-      "description": dataToSend.content
-    })
-    dataToSend.content = ""
-  }
-  return dataToSend
 }
 
 interface RelayItem {
@@ -124,6 +179,27 @@ interface RelayItem {
   channel: string
 }
 
+const attemptSend = async (webhookClient: WebhookClient, message: Message, dataToSend: DataWebhookMessage, name: string) => {
+  const sendMessage = async () => await webhookClient.send({...dataToSend, "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + name))});
+  try {
+    return await sendMessage();
+  } catch (e) {
+    console.error("An error occured while sending a message.")
+    console.error(e)
+    try {
+      return await sendMessage();
+    } catch (e) {
+      console.error("Another error occurred. Stripping files.");
+      console.error(e)
+      try {
+        return await webhookClient.send({...dataToSend, "files": [], "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + name))})
+      } catch (e) {
+        console.error("Failed to send message.")
+        return await webhookClient.send({"embeds": [{"title": "Internal error", "description": "Could not send message."}], "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + name))})
+      }
+    }
+  }
+}
 export const relayMessage = async (message: Message) => {
   if (message.content === "" && message.attachments.size === 0 && message.embeds.length === 0 && message.stickers.size === 0 && !message.poll && !message.flags.any(16384)) return
   const dataToSend = await createDataToSend(message)
@@ -136,7 +212,7 @@ export const relayMessage = async (message: Message) => {
     for (const channelData of group) {
       if (channelData.channel === current.channel) continue
       const webhookClient = new WebhookClient({ url: channelData.webhook });
-      currMap[channelData.channel] = (await webhookClient.send({...dataToSend, "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + current.name))})).id
+      currMap[channelData.channel] = (await attemptSend(webhookClient, message, dataToSend, current.name)).id
     }
     currMap.group = id
     messageMap.set(message.id, currMap)
@@ -246,8 +322,7 @@ client.on(Events.MessageCreate, async (message) => {
   const dataToSend = await createDataToSend(message)
   if (!dataToSend || (!dataToSend.content && !dataContent.embeds && !dataContent.files)) return
   const webhookClient = new WebhookClient({ url: serverSave.webhook });
-  await webhookClient.send({...dataToSend, "username": appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + serverSave.source_name + " #" + (message.channel as TextChannel).name)})
-  serverSave.last_message = message.id;
+  await attemptSend(webhookClient, message, dataToSend, serverSave.source_name + " #" + (message.channel as TextChannel).name)
   await saveData()
 })
 
@@ -450,6 +525,7 @@ const performServerSave = async (save: ServerSave) => {
       }
     }
     const webhookClient = earliestWebhook!
+    console.log(appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + (guildMessage.channel as TextChannel).name))
     const sendMessage = async () => await webhookClient.send({...dataToSend, "username": appendCappedSuffix(guildMessage.author.displayName ?? "Unknown User", " - " + save.source_name + " #" + (guildMessage.channel as TextChannel).name)})
     try {
       await sendMessage()
@@ -516,4 +592,3 @@ client.on(Events.InteractionCreate, async interaction => {
   await saveData()
   await interaction.followUp(deleted ? "Server save deleted." : "No server save found.")
 })
-console.log(dataContent)
