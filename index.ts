@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption, ComponentType, ButtonStyle, TextInputStyle } from 'discord.js';
+import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption, ComponentType, ButtonStyle, TextInputStyle, SlashCommandChannelOption } from 'discord.js';
 import type { Guild, User } from "discord.js"
 
 import JSONdb from 'simple-json-db';
@@ -127,7 +127,7 @@ client.on(Events.MessageCreate, async message => {
   const channel = await client.channels.fetch(channelId)
   if (!(channel instanceof GuildChannel)) return void await message.reply("Not a guild channel!")
   await (channel as GuildChannel).edit({"name": channelName})
-  await message.reply("Topic edited!")
+  await message.reply("Name edited!")
 })
 client.on(Events.MessageCreate, async message => {
   if (!message.content.startsWith("$topic") || message.author.bot) return
@@ -156,11 +156,42 @@ client.on(Events.MessageCreate, async message => {
   if (!(channel instanceof GuildChannel)) return void await message.reply("Not a guild channel!")
   if (channel.guildId !== message.guildId) return await message.reply("Wrong guild!")
   await (channel as GuildChannel).edit({"topic": channelTopic})
-  await message.reply("Name edited!")
+  await message.reply("Topic edited!")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "change_topic") return;
+	const channelInput = interaction.options.getChannel("channel")
+	const channel = channelInput ?? interaction.channel
+	if (!channel) return await interaction.reply("Where are you running this right now? In space?")
+	if (!("topic" in channel)) return await interaction.reply("That can't have a topic, silly.")
+	await interaction.showModal({
+		"customId": "rename." + channel.id,
+		"title": channelInput ? "Channel Topic" : "Channel Topic (editing current channel)",
+		"components": [
+			{
+				"type": ComponentType.ActionRow,
+				"components": [
+					{
+						"type": ComponentType.TextInput,
+						"customId": "topic",
+						"label": "Topic",
+						"style": TextInputStyle.Paragraph,
+						"value": channel.topic ?? ""
+					}
+				]
+			}
+		]
+	})
 })
 client.on(Events.InteractionCreate, async interaction => {
 	if ((!interaction.isButton() && !interaction.isModalSubmit()) || !interaction.customId.startsWith("rename.")) return;
 	if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels)) return await interaction.reply("You need the Manage Channels permission.")
+	const channelId = interaction.customId.split(".")[1]
+	const channel = await client.channels.fetch(channelId)
+	if (!(channel instanceof GuildChannel)) return void await interaction.reply("Not a guild channel!")
+	if (channel.guildId !== interaction.guildId) return await interaction.reply("Wrong guild!")
+	if (!("topic" in channel)) return await interaction.reply("That can't have a topic, silly.")
 	if (interaction.isButton()) {
 		await interaction.showModal({
 			"customId": interaction.customId,
@@ -173,7 +204,8 @@ client.on(Events.InteractionCreate, async interaction => {
 							"type": ComponentType.TextInput,
 							"customId": "topic",
 							"label": "Topic",
-							"style": TextInputStyle.Paragraph
+							"style": TextInputStyle.Paragraph,
+							"value": channel.topic ?? ""
 						}
 					]
 				}
@@ -181,11 +213,7 @@ client.on(Events.InteractionCreate, async interaction => {
 		})
 	}
 	if (interaction.isModalSubmit()) {
-		const channelId = interaction.customId.split(".")[1]
 		const topic = interaction.fields.getTextInputValue("topic")
-		const channel = await client.channels.fetch(channelId)
-		if (!(channel instanceof GuildChannel)) return void await interaction.reply("Not a guild channel!")
-		if (channel.guildId !== interaction.guildId) return await interaction.reply("Wrong guild!")
 		await (channel as GuildChannel).edit({"topic": topic})
 		await interaction.reply("Topic edited!")
 	}
@@ -408,6 +436,15 @@ const commands = [
 	.setName("delete_server_save")
 	.setDescription("Deletes all server saves in channel.")
   .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
+  new SlashCommandBuilder()
+  .setName("change_topic")
+  .setDescription("Change the topic of a channel.")
+  .addChannelOption(
+	  new SlashCommandChannelOption()
+	  .setName("channel")
+	  .setDescription("The channel to change.")
+  )
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels),
 ]
 if (!client.application) throw new Error("No application for client?")
 await client.rest.put(Routes.applicationCommands(client.application.id), {"body": commands})
