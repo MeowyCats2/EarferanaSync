@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption, ComponentType, ButtonStyle, TextInputStyle, SlashCommandChannelOption } from 'discord.js';
+import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption, ComponentType, ButtonStyle, TextInputStyle, SlashCommandChannelOption, DiscordAPIError, MessageFlags, ChannelType } from 'discord.js';
 import type { Guild, User } from "discord.js"
 
 import JSONdb from 'simple-json-db';
@@ -177,7 +177,8 @@ client.on(Events.InteractionCreate, async interaction => {
 						"customId": "topic",
 						"label": "Topic",
 						"style": TextInputStyle.Paragraph,
-						"value": channel.topic ?? ""
+						"value": channel.topic ?? "",
+						"maxLength": channel.type === ChannelType.GuildForum ? 4000 : 1024
 					}
 				]
 			}
@@ -214,8 +215,24 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 	if (interaction.isModalSubmit()) {
 		const topic = interaction.fields.getTextInputValue("topic")
-		await (channel as GuildChannel).edit({"topic": topic})
-		await interaction.reply("Topic edited!")
+		try {
+			await (channel as GuildChannel).edit({"topic": topic})
+			await interaction.reply({
+				content: "Topic edited!",
+				flags: MessageFlags.Ephemeral
+			})
+		} catch (e) {
+			if (e instanceof DiscordAPIError) {
+				let additional = "";
+				if (e.code === 50035) additional = "\n\nThis error means that you either put a disallowed word in the topic, or an emoji that the bot isn't in. To use this topic, you must first remove those or invite the bot to the servers the emojis are in."
+				return await interaction.reply({
+					content: "An error occured while trying to edit the topic.\n\n" + e.code + ": " + e.message + additional,
+					flags: MessageFlags.Ephemeral
+				})
+			} else {
+				throw e;
+			}
+		}
 	}
 })
 client.on(Events.MessageCreate, async message => {
