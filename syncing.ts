@@ -195,7 +195,11 @@ const attemptSend = async (webhookClient: WebhookClient, message: Message, dataT
         return await webhookClient.send({...dataToSend, "files": [], "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + name))})
       } catch (e) {
         console.error("Failed to send message.")
-        return await webhookClient.send({"embeds": [{"title": "Internal error", "description": "Could not send message."}], "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + name))})
+        try {
+          return await webhookClient.send({"embeds": [{"title": "Internal error", "description": "Could not send message."}], "username": (appendCappedSuffix(message.author.displayName ?? "Unknown User", " - " + name))})
+        } catch (e) {
+          return null;
+        }
       }
     }
   }
@@ -208,11 +212,24 @@ export const relayMessage = async (message: Message) => {
     if (!current) continue
     if (message.webhookId === current.webhook.split("/")[5]) return
     const currMap: Record<string, string> = {}
-    console.log(group)
     for (const channelData of group) {
       if (channelData.channel === current.channel) continue
       const webhookClient = new WebhookClient({ url: channelData.webhook });
-      currMap[channelData.channel] = (await attemptSend(webhookClient, message, dataToSend, current.name)).id
+      const attempted = await attemptSend(webhookClient, message, dataToSend, current.name)
+      if (!attempted) {
+        group.splice(group.indexOf(channelData), 1);
+        console.error("Self-destructing channel.")
+        for (const channelData of group) {
+          try {
+            const subwebhookClient = new WebhookClient({ url: channelData.webhook });
+            await subwebhookClient.send(`Self-destructing <#${channelData.channel}> with name ${current.name}`)
+          } catch (e) {
+          }
+        }
+        await saveData();
+        continue;
+      }
+      currMap[channelData.channel] = attempted.id
     }
     currMap.group = id
     messageMap.set(message.id, currMap)
@@ -283,6 +300,7 @@ const catchUpWithMessages = async (group: RelayItem[]) => {
         }
         console.log("Relaying messages...")
         for (const message of messages) {
+          console.log(webhookData.name + ": " + message.id);
           await relayMessage(message);
         }
         savingChannels.splice(savingChannels.indexOf(webhookData.channel), 1)
@@ -293,6 +311,21 @@ const catchUpWithMessages = async (group: RelayItem[]) => {
         }
       } catch (e) {
         console.error(e)
+        try {
+          await client.channels.fetch(webhookData.channel)
+        } catch (e) {
+          console.error(e)
+          group.splice(group.indexOf(webhookData), 1);
+          console.error("Self-destructing channel.")
+          for (const channelData of group) {
+            try {
+              const subwebhookClient = new WebhookClient({ url: channelData.webhook });
+              await subwebhookClient.send(`Self-destructing <#${channelData.channel}> with name ${webhookData.name}`)
+            } catch (e) {
+            }
+          }
+          await saveData();
+        }
       }
     }
   }
@@ -461,10 +494,40 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 	await interaction.followUp("Messages relayed.")
 })
-const performServerSave = async (save: ServerSave) => {
+const performServerSave = async (save: ServerSave, isRetrying?: boolean) => {
   console.log("Server save " + save.save_id)
   savingServers.push(save.save_id)
-  const guild = await client.guilds.fetch(save.guild_id)
+  let guild = null;
+  try {
+    guild = await client.guilds.fetch(save.guild_id)
+  } catch (e) {
+    if (!isRetrying) {
+      console.error("Failed to fetch guild of save " + save.save_id)
+      console.error(e)
+      try {
+        return await performServerSave(save, true);
+      } catch (e) {
+        console.error("Failed. Deleting save.");
+        try {
+          const webhook = new WebhookClient({ url: save.webhook });
+          await webhook.send("Failed to fetch remote server. Self-destructing commencing...")
+        } catch (e) {
+          console.error("Failed.")
+        }
+        dataContent.serverSaves.splice(dataContent.serverSaves.indexOf(save), 1);
+        await saveData();
+        try {
+          const webhook = new WebhookClient({ url: save.webhook });
+          await webhook.send("Self-destruct complete.")
+          await webhook.delete();
+        } catch (e) {
+          console.error("Failed.")
+        }
+        return;
+      }
+    }
+    throw e;
+  }
   let guildMessages = []
   for (const channel of (await guild.channels.fetch()).values()) {
     console.log(channel!.id + " performing...")
@@ -541,6 +604,7 @@ const performServerSave = async (save: ServerSave) => {
     console.log(index + "/" + guildMessages.length + " sent")
     lastSent[webhookList.indexOf(earliestWebhook!)] = Date.now()
   }
+  console.log("Server save " + save.save_id + " complete!")
 }
 for (const save of dataContent.serverSaves) {
   performServerSave(save)

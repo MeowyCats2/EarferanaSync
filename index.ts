@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption } from 'discord.js';
+import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption, ComponentType, ButtonStyle, TextInputStyle } from 'discord.js';
 import type { Guild, User } from "discord.js"
 
 import JSONdb from 'simple-json-db';
@@ -118,16 +118,77 @@ client.on(Events.GuildBanAdd, async (ban) => {
 //console.log((await (await client.channels.fetch("1001902549248512221")).messages.fetch("1227396718216351756")).poll)
 
 client.on(Events.MessageCreate, async message => {
-  if (!message.content.startsWith("$editchannel") || message.author.bot) return
+  if (!message.content.startsWith("$rename") || message.author.bot) return
   if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageChannels)) return void message.reply("You need the Manage Channels permission.")
-  const options = message.content.replace(/^\$editchannel\s/, "").split(" ")
+  const options = message.content.replace(/^\$rename\s/, "").split(" ")
   const channelId = options[0].match(/[0-9]+/)?.[0]
   const channelName = options[1]
   if (!channelId) return void message.reply("Please provide a channel ID.")
   const channel = await client.channels.fetch(channelId)
   if (!(channel instanceof GuildChannel)) return void await message.reply("Not a guild channel!")
   await (channel as GuildChannel).edit({"name": channelName})
+  await message.reply("Topic edited!")
+})
+client.on(Events.MessageCreate, async message => {
+  if (!message.content.startsWith("$topic") || message.author.bot) return
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageChannels)) return void message.reply("You need the Manage Channels permission.")
+  const options = message.content.replace(/^\$topic\s/, "").split(" ")
+  const channelId = options[0].match(/[0-9]+/)?.[0]
+  if (!channelId) return void message.reply("Please provide a channel ID.")
+  if (!options[1]) return await message.reply({
+	content: "Would you like to open up a modal?",
+	components: [
+		{
+			"type": ComponentType.ActionRow,
+			"components": [
+				{
+					"type": ComponentType.Button,
+					"label": "Edit Topic",
+					"style": ButtonStyle.Primary,
+					"customId": "rename." + channelId
+				}
+			]
+		}
+	]
+  })
+  const channelTopic = options[1].replaceAll("\\>", ">")
+  const channel = await client.channels.fetch(channelId)
+  if (!(channel instanceof GuildChannel)) return void await message.reply("Not a guild channel!")
+  if (channel.guildId !== message.guildId) return await message.reply("Wrong guild!")
+  await (channel as GuildChannel).edit({"topic": channelTopic})
   await message.reply("Name edited!")
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if ((!interaction.isButton() && !interaction.isModalSubmit()) || !interaction.customId.startsWith("rename.")) return;
+	if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels)) return await interaction.reply("You need the Manage Channels permission.")
+	if (interaction.isButton()) {
+		await interaction.showModal({
+			"customId": interaction.customId,
+			"title": "Channel Topic",
+			"components": [
+				{
+					"type": ComponentType.ActionRow,
+					"components": [
+						{
+							"type": ComponentType.TextInput,
+							"customId": "topic",
+							"label": "Topic",
+							"style": TextInputStyle.Paragraph
+						}
+					]
+				}
+			]
+		})
+	}
+	if (interaction.isModalSubmit()) {
+		const channelId = interaction.customId.split(".")[1]
+		const topic = interaction.fields.getTextInputValue("topic")
+		const channel = await client.channels.fetch(channelId)
+		if (!(channel instanceof GuildChannel)) return void await interaction.reply("Not a guild channel!")
+		if (channel.guildId !== interaction.guildId) return await interaction.reply("Wrong guild!")
+		await (channel as GuildChannel).edit({"topic": topic})
+		await interaction.reply("Topic edited!")
+	}
 })
 client.on(Events.MessageCreate, async message => {
   if (!message.content.startsWith("$poll") || message.author.bot) return
