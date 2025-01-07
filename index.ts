@@ -462,6 +462,10 @@ const commands = [
 	  .setDescription("The channel to change.")
   )
   .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels),
+  new SlashCommandBuilder()
+  .setName("clear_channel_group_queue")
+  .setDescription("Clears the message queue for the current channel group.")
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
 ]
 if (!client.application) throw new Error("No application for client?")
 await client.rest.put(Routes.applicationCommands(client.application.id), {"body": commands})

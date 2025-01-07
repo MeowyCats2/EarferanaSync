@@ -494,6 +494,26 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 	await interaction.followUp("Messages relayed.")
 })
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "clear_channel_group_queue") return;
+	await interaction.deferReply();
+  for (const [id, group] of Object.entries(dataContent.linkedGroups as Record<string, RelayItem[]>)) {
+    const index = group.findIndex(channel => channel.channel === interaction.channel!.id)
+    if (index === -1) continue
+    for (const channel of group) {
+      const channelData = await client.channels.fetch(channel.channel) as TextChannel;
+      dataContent.lastHandledMessage[channel.channel] = await channelData.messages.fetch({
+        limit: 1
+      })
+    }
+    await saveData();
+    await interaction.followUp("Cleared queue.")
+    process.abort();
+    return;
+  }
+	await interaction.followUp("No link found.")
+})
 const performServerSave = async (save: ServerSave, isRetrying?: boolean) => {
   console.log("Server save " + save.save_id)
   savingServers.push(save.save_id)
