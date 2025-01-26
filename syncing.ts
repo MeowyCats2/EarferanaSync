@@ -300,7 +300,7 @@ const catchUpWithMessages = async (group: RelayItem[]) => {
         }
         console.log("Relaying messages...")
         for (const message of messages) {
-          console.log(webhookData.name + ": " + message.id);
+          //console.log(webhookData.name + ": " + message.id);
           await relayMessage(message);
         }
         savingChannels.splice(savingChannels.indexOf(webhookData.channel), 1)

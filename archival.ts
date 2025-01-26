@@ -1,5 +1,5 @@
 import { Events, PermissionsBitField, MessageType } from 'discord.js';
-import type { GuildChannel, Message, Webhook, TextChannel, TextBasedChannel } from "discord.js"
+import type { GuildChannel, Message, Webhook, TextChannel, TextBasedChannel, AnyThreadChannel, ChannelType } from "discord.js"
 import { mkdir } from "node:fs/promises";
 import JSZip from "jszip"
 
@@ -435,7 +435,7 @@ client.on(Events.MessageCreate, async message => {
 
 
 client.on(Events.MessageCreate, async message => {
-    if (message.content !== "$server_archive" || message.author.bot) return
+    if (!message.content.startsWith("$server_archive") || message.author.bot) return
     if (!(message.channel as GuildChannel).permissionsFor(message.author)?.has(PermissionsBitField.Flags.ManageMessages)) message.reply("You need the Manage Messages permission.")
     const messageUpdate = await message.reply("Fetching messages...")
     let lastUpdate = Date.now()
@@ -456,10 +456,12 @@ client.on(Events.MessageCreate, async message => {
                     channelMessages.push(...fetched)
                     if (Date.now() - lastUpdate > 2000) {
                         lastUpdate = Date.now()
-                        messageUpdate.edit("Fetching messages... " + guildMessages.length + " messages at " + Math.floor(index / channelList.length * 100) + "%")
+                        messageUpdate.edit("Fetching messages... " + (guildMessages.length + channelMessages.length) + " messages at " + Math.floor(index / channelList.length * 100) + "%")
                     }
                 }
-                guildMessages.push(...channelMessages)
+                for (const channelMessage of channelMessages) {
+                    guildMessages.push(channelMessage)
+                }
             }
             if ("messages" in channel!) await handleMessages(channel as TextBasedChannel)
             if ("threads" in channel!) {
@@ -482,33 +484,35 @@ client.on(Events.MessageCreate, async message => {
     let authors: Record<string, object> = {}
     for (const [index, current] of guildMessages.entries()) {
         const attachments = []
-        for (const attachment of current.attachments.values()) {
-            files[attachment.id + "." + attachment.name.split(".").at(-1)] = await (await fetch(attachment.url)).arrayBuffer()
-            attachments.push({
-                "contentType": attachment.contentType,
-                "description": attachment.description,
-                "name": attachment.name,
-                "spoiler": attachment.spoiler,
-                "id": attachment.id,
-                "url": attachment.url,
-                "proxyURL": attachment.proxyURL,
-                "file": attachment.id + "." + attachment.name.split(".").at(-1)
-            })
-        }
-        const stickers = []
-        for (const sticker of current.stickers.values()) {
-            files[sticker.id] = await (await fetch(sticker.url)).arrayBuffer()
-            stickers.push({
-                "createdTimestamp": sticker.createdTimestamp,
-                "description": sticker.description,
-                "format": sticker.format,
-                "guildId": sticker.guildId,
-                "id": sticker.id,
-                "name": sticker.name,
-                "packId": sticker.packId,
-                "type": sticker.type,
-                "url": sticker.url
-            })
+        if (!message.content.includes("--t")) {
+            for (const attachment of current.attachments.values()) {
+                files[attachment.id + "." + attachment.name.split(".").at(-1)] = await (await fetch(attachment.url)).arrayBuffer()
+                attachments.push({
+                    "contentType": attachment.contentType,
+                    "description": attachment.description,
+                    "name": attachment.name,
+                    "spoiler": attachment.spoiler,
+                    "id": attachment.id,
+                    "url": attachment.url,
+                    "proxyURL": attachment.proxyURL,
+                    "file": attachment.id + "." + attachment.name.split(".").at(-1)
+                })
+            }
+            const stickers = []
+            for (const sticker of current.stickers.values()) {
+                files[sticker.id] = await (await fetch(sticker.url)).arrayBuffer()
+                stickers.push({
+                    "createdTimestamp": sticker.createdTimestamp,
+                    "description": sticker.description,
+                    "format": sticker.format,
+                    "guildId": sticker.guildId,
+                    "id": sticker.id,
+                    "name": sticker.name,
+                    "packId": sticker.packId,
+                    "type": sticker.type,
+                    "url": sticker.url
+                })
+            }
         }
         if (!(current.author.id in authors)) {
         if (current.author.avatarURL()) files[current.author.id] = await (await fetch(current.author.avatarURL()!)).arrayBuffer()
@@ -542,12 +546,61 @@ client.on(Events.MessageCreate, async message => {
             parseUpdate.edit("Downloading attachments and avatars... " + index + " messages at " + Math.floor(index / guildMessages.length * 100) + "%")
         }
     }
+    message.reply("Fetching channels...");
+    const channels: Record<string, {
+        parentId?: string | null,
+        parentName?: string,
+        nsfw: boolean | null,
+        position: number,
+        rawPosition: number,
+        url: string,
+        topic: string | null,
+        name: string,
+        threads: {
+            url: string,
+            name: string,
+            type: ChannelType,
+            id: string
+        }[] | null,
+        type: ChannelType,
+        id: string
+    }> = {};
+    for (const channel of [...(await message.guild!.channels.fetch()).values()]) {
+        if (!channel) continue;
+        let threads: any[] | null = [];
+        if ("threads" in channel!) {
+            for (const thread of [...(await channel.threads.fetch()).threads.values()]) {
+                threads.push({
+                    url: thread.url,
+                    name: thread.name,
+                    type: thread.type,
+                    id: thread.id
+                });
+            }
+        } else {
+            threads = null;
+        }
+        channels[channel.id] = {
+            parentId: channel?.parentId,
+            parentName: channel?.parent?.name,
+            nsfw: "nsfw" in channel ? channel?.nsfw : null,
+            position: channel.position,
+            rawPosition: channel.rawPosition,
+            url: channel.url,
+            topic: "topic" in channel ? channel.topic : null,
+            name: channel.name,
+            threads,
+            type: channel.type,
+            id: channel.id
+        }
+    }
     message.reply("Stringifying messages...")
     const messagesLength = guildMessages.length
     guildMessages = [];
     files["options.json"] = JSON.stringify({"multichannel": true})
     files["messages.json"] = JSON.stringify(parsedMessages)
     files["authors.json"] = JSON.stringify(authors)
+    files["channels.json"] = JSON.stringify(channels)
     message.reply("Writing...")
     parsedMessages = [];
     authors = {};

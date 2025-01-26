@@ -1,6 +1,8 @@
 // Require the necessary discord.js classes
-import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption, ComponentType, ButtonStyle, TextInputStyle, SlashCommandChannelOption, DiscordAPIError, MessageFlags, ChannelType } from 'discord.js';
-import type { Guild, User } from "discord.js"
+import { Events, UserFlags, AuditLogEvent, PermissionsBitField, Routes, SlashCommandBuilder, SlashCommandBooleanOption, SlashCommandStringOption, GuildChannel, SlashCommandIntegerOption, ComponentType, ButtonStyle, TextInputStyle, SlashCommandChannelOption, DiscordAPIError, MessageFlags, ChannelType, WebhookClient } from 'discord.js';
+import type { Guild, User, TextChannel, Webhook } from "discord.js"
+import { scrapePosts } from './scrapeyt.ts';
+import type { Post } from "./scrapeyt.ts"
 
 import JSONdb from 'simple-json-db';
 import fs from "fs/promises"
@@ -336,6 +338,154 @@ client.on(Events.InteractionCreate, async interaction => {
 	await interaction.followUp("Configured.")
 })
 
+const handleYTPost = async (post: Post, webhook: Webhook | WebhookClient, subtext: string | null) => {
+	const multiImage = [];
+	if (post.attachment.multiImage) {
+		for (const image of post.attachment.multiImage) {
+			multiImage.push({
+				attachment: Buffer.from(await (await fetch(image.at(-1)!.url)).arrayBuffer()),
+				name: post.postId + ".png"
+			})
+		}
+	}
+	const embed = post.attachment.poll ? [
+		{
+			title: "Poll",
+			description: post.attachment.poll.choices.join("\n"),
+			footer: {
+				text: post.attachment.poll.pollType + " \u2022 " + post.attachment.poll.totalVotes + " total votes"
+			}
+		}
+	] : (post.attachment.video ? [
+		{
+			title: post.attachment.video.title,
+			description: post.attachment.video.descriptionSnippet,
+			author: post.attachment.video.owner.name ? {
+				name: post.attachment.video.owner.name,
+				icon_url: post.attachment.video.owner.thumbnails?.at(-1)?.url,
+				url: "https://youtube.com" + post.attachment.video.owner.url
+			} : undefined,
+			footer: {
+				text: post.attachment.video.lengthText.long + " \u2022 " + post.attachment.video.viewCountText + " \u2022 " + post.attachment.video.publishedTimeText
+			},
+			url: "https://www.youtube.com/watch?v=" + post.attachment.video.videoId
+		}
+	] : [])
+	const parsePostContent = (postContent: {
+		text: string,
+		url?: string,
+		webPageType?: string
+	}[]) => postContent.map(content => content.url ? (content.url === content.text ? content.url : `[${content.text}](https://youtube.com${content.url})`) : content.text).join("")
+	await webhook.send({
+		content: post.content ? parsePostContent(post.content) + (subtext ? "\n\n-# " + subtext : "") : "",
+		files: post.attachment.image ? [
+			{
+				attachment: Buffer.from(await (await fetch(post.attachment.image.at(-1)!.url)).arrayBuffer()),
+				name: post.postId + ".png"
+			}
+		] : multiImage,
+		embeds: post.sharedPost ? [...embed, {
+			title: "Shared Post",
+			description: parsePostContent(post.sharedPost.content),
+			author: {
+				icon_url: "https:" + post.sharedPost.author.thumbnails.at(-1)!.url,
+				name: post.sharedPost.author.name,
+				url: "https://youtube.com" + post.sharedPost.author.url
+			},
+			image: post.sharedPost.attachment.image ? {
+				url: post.sharedPost.attachment.image.at(-1)!.url
+			} : (post.sharedPost.attachment.multiImage ? {
+				url: post.sharedPost.attachment.multiImage[0].at(-1)!.url
+			} : undefined),
+			fields: post.sharedPost.attachment.multiImage ? [
+				{
+					name: "Images",
+					value: post.sharedPost.attachment.multiImage.map(image => image.at(-1)!.url).join("\n\n")
+				}
+			] : undefined
+		}] : embed,
+		username: post.author.name,
+		avatarURL: "https:" + post.author.thumbnails.at(-1)?.url,
+		components: [
+			{
+				type: ComponentType.ActionRow,
+				components: [
+					{
+						type: ComponentType.Button,
+						style: ButtonStyle.Link,
+						url: "https://www.youtube.com/post/" + post.postId,
+						label: "Original Post"
+					}
+				]
+			}
+		]
+	})
+}
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "create_yt_community_relay") return;
+	await interaction.deferReply({
+		flags: MessageFlags.Ephemeral
+	});
+	let posts = null;
+	try {
+		posts = await scrapePosts(interaction.options.getString("channel", true));
+	} catch (e) {
+		console.error(e);
+		return await interaction.followUp("Failed to fetch community posts. Are you sure the channel ID is correct? Please note that a channel ID is different than a username.")
+	}
+	const webhook = await (interaction.channel as TextChannel).createWebhook({
+		"name": "YT Community Relaying",
+		"reason": "Relay YT community posts"
+	});
+	posts.reverse();
+	await interaction.followUp("Starting...")
+	const subtext = interaction.options.getString("subtext");
+	for (const post of posts) {
+		await handleYTPost(post, webhook, subtext);
+	}
+	dataContent.ytCommunityRelays.push({
+		postId: posts.at(-1)!.postId,
+		channel: interaction.options.getString("channel", true),
+		subtext,
+		webhookUrl: webhook.url,
+		webhookChannel: interaction.channelId
+	})
+	await saveData();
+	await interaction.followUp({
+		content: "Finished!",
+		flags: MessageFlags.Ephemeral
+	})
+})
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "remove_yt_community_relay") return;
+	await interaction.deferReply();
+	dataContent.ytCommunityRelays.splice(dataContent.ytCommunityRelays.findIndex((relay: any) => relay.webhookChannel === interaction.channelId), 1);
+	await saveData();
+	await interaction.reply("Removed.")
+});
+dataContent.ytCommunityRelays = [];
+const fetchNewPosts = async () => {
+	for (const relay of dataContent.ytCommunityRelays) {
+		const firstPage = await scrapePosts(relay.channel, true);
+		const posts: Post[] = [];
+		for (const post of firstPage) {
+			if (post.postId === relay.postId) break;
+			posts.push(post);
+		}
+		if (posts.length === 0) continue;
+		posts.reverse();
+		const webhook = new WebhookClient({ url: relay.webhookUrl });
+		for (const post of posts) {
+			await handleYTPost(post, webhook, relay.subtext);
+		};
+		relay.postId = posts[0].postId;
+		await saveData();
+	}
+}
+fetchNewPosts();
+setInterval(fetchNewPosts, 60 * 1000)
 const commands = [
 	new SlashCommandBuilder()
 	.setName("perpetual_incident_actions")
@@ -466,6 +616,25 @@ const commands = [
   .setName("clear_channel_group_queue")
   .setDescription("Clears the message queue for the current channel group.")
   .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
+  new SlashCommandBuilder()
+  .setName("create_yt_community_relay")
+  .setDescription("Create a relay from a YouTube community post tab")
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks)
+  .addStringOption(
+	  new SlashCommandStringOption()
+	  .setName("channel")
+	  .setDescription("Channel ID - not the username!")
+	  .setRequired(true)
+  )
+  .addStringOption(
+	  new SlashCommandStringOption()
+	  .setName("subtext")
+	  .setDescription("Place here pings and stuff")
+  ),
+  new SlashCommandBuilder()
+  .setName("remove_yt_community_relay")
+  .setDescription("Remove the YT community relays for the current channel")
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks)
 ]
 if (!client.application) throw new Error("No application for client?")
 await client.rest.put(Routes.applicationCommands(client.application.id), {"body": commands})
