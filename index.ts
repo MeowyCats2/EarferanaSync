@@ -392,7 +392,7 @@ const handleYTPost = async (post: Post, webhook: Webhook | WebhookClient, subtex
 	if (post.content) {
 		for (const content of post.content) {
 			const toAdd = content.url ? (content.url === content.text ? content.url : `[${content.text}](https://youtube.com${content.url})`) : content.text;
-			if (toAdd.length > 1990) {
+			if (toAdd.length + (subtext?.length ?? 0) > 1990) {
 				let lasti = 0;
 				for (let i = 0; i < toAdd.length - 1001; i += 1000) {
 					await webhook.send({
@@ -411,11 +411,11 @@ const handleYTPost = async (post: Post, webhook: Webhook | WebhookClient, subtex
 				})
 				contents = "";
 			};
-			if (toAdd.length <= 1990) contents += toAdd;
+			if (toAdd.length + (subtext?.length ?? 0) <= 1990) contents += toAdd;
 		}
 	}
 	await webhook.send({
-		content: contents + (subtext ? "\n#- " + subtext : ""),
+		content: contents + (subtext ? "\n-# " + subtext : ""),
 		files: post.attachment.image ? [
 			{
 				attachment: Buffer.from(await (await fetch(post.attachment.image.at(-1)!.url)).arrayBuffer()),
@@ -474,7 +474,11 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 	let channelId: string | null = null;
 	if (interaction.options.getString("username")) {
-		channelId = (await (await fetch("https://www.youtube.com/@" + interaction.options.getString("username"))).text()).match(/<link rel="canonical" href="https:\/\/www.youtube.com\/channel\/(.+?)">/)![1]
+		try {
+			channelId = (await (await fetch("https://www.youtube.com/@" + interaction.options.getString("username"))).text()).match(/<link rel="canonical" href="https:\/\/www.youtube.com\/channel\/(.+?)">/)![1]
+		} catch (e) {
+			return await interaction.followUp("Failed to fetch channel ID. Is the username correct?")
+		}
 	} else {
 		channelId = interaction.options.getString("channel_id")!;
 	}

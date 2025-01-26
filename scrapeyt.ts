@@ -191,6 +191,12 @@ export const scrapePosts = async (channelId: string, onlyFirstPage?: boolean) =>
                 const continuation = await browse({
                     continuation: itemSection.continuationItemRenderer.continuationEndpoint.continuationCommand.token
                 });
+                if (!continuation.onResponseReceivedEndpoints[0].appendContinuationItemsAction.continuationItems) {
+                    console.log(continuation)
+                    console.log(continuation.onResponseReceivedEndpoints[0])
+                    console.warn("Could not find continuation")
+                    return
+                }
                 if (!onlyFirstPage) await parseItemSections(continuation.onResponseReceivedEndpoints[0].appendContinuationItemsAction.continuationItems)
             }
         }
