@@ -233,9 +233,9 @@ export const relayMessage = async (message: Message) => {
     }
     currMap.group = id
     messageMap.set(message.id, currMap)
+    dataContent.lastHandledMessage[message.channel.id] = message.id;
+    await saveData();
   }
-  dataContent.lastHandledMessage[message.channel.id] = message.id;
-  await saveData();
 }
 client.on(Events.MessageCreate, (message) => {
   if (savingChannels.includes(message.channel.id)) {

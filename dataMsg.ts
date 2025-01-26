@@ -25,7 +25,7 @@ export const saveData = async (fromWaiting?: boolean) => {
         ]
     });
     if (waitingListeners.length - currentListeners.length > 0) {
-        saveData(fromWaiting);
+        saveData(true);
     }
     isSaving = false;
     console.log("\x1b[36m%s\x1b[0m", "Saved!")

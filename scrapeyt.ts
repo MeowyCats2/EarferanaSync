@@ -31,11 +31,23 @@ export type PollAttachment = {
     pollType: string,
 }
 export type MultiImageAttachment = ImageAttachment[];
+export type QuizAttachment = {
+    choices: {
+        text: string,
+        explanation: string,
+        isCorrect: boolean
+    }[],
+    totalVotes: string,
+    quizType: string,
+    enableAnimation: boolean,
+    disableChangingQuizAnswer: boolean
+}
 export type Attachment = {
     image?: ImageAttachment,
     video?: VideoAttachment,
     poll?: PollAttachment,
-    multiImage?: MultiImageAttachment
+    multiImage?: MultiImageAttachment,
+    quiz?: QuizAttachment
 }
 export type Post = {
     postId: string,
@@ -125,6 +137,19 @@ export const scrapePosts = async (channelId: string, onlyFirstPage?: boolean) =>
             }
             if (rawPost.backstageAttachment.postMultiImageRenderer) {
                 attachment.multiImage = rawPost.backstageAttachment.postMultiImageRenderer.images.map((image: any) => image.backstageImageRenderer.image.thumbnails);
+            }
+            if (rawPost.backstageAttachment.quizRenderer) {
+                attachment.quiz = {
+                    choices: rawPost.backstageAttachment.quizRenderer.choices.map((choice: any) => ({
+                        text: choice.text.runs[0].text,
+                        explanation: choice.explanation.runs[0].text,
+                        isCorrect: choice.isCorrect
+                    })),
+                    totalVotes: rawPost.backstageAttachment.quizRenderer.totalVotes.simpleText,
+                    quizType: rawPost.backstageAttachment.quizRenderer.type,
+                    enableAnimation: rawPost.backstageAttachment.enableAnimation,
+                    disableChangingQuizAnswer: rawPost.backstageAttachment.disableChangingQuizAnswer,
+                }
             }
         }
         const rawAuthor = isShared ? rawPost.displayName : rawPost.authorText
