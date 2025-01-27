@@ -514,11 +514,21 @@ client.on(Events.InteractionCreate, async interaction => {
 })
 client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
+	if (interaction.commandName !== "list_yt_community_relays") return;
+	await interaction.deferReply();
+	const result = [];
+	for (const relay of dataContent.ytCommunityRelays) {
+		if ((await client.channels.fetch(relay.webhookChannel) as TextChannel)?.guildId === interaction.guildId) result.push(relay);
+	}
+	await interaction.followUp(result.map(relay => `<#${relay.webhookChannel}>`).join("\n"))
+});
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
 	if (interaction.commandName !== "remove_yt_community_relay") return;
 	await interaction.deferReply();
 	dataContent.ytCommunityRelays.splice(dataContent.ytCommunityRelays.findIndex((relay: any) => relay.webhookChannel === interaction.channelId), 1);
 	await saveData();
-	await interaction.reply("Removed.")
+	await interaction.followUp("Removed.")
 });
 const fetchNewPosts = async () => {
 	for (const relay of dataContent.ytCommunityRelays) {
@@ -540,6 +550,7 @@ const fetchNewPosts = async () => {
 }
 fetchNewPosts();
 setInterval(fetchNewPosts, 60 * 1000)
+console.log(dataContent.ytCommunityRelays)
 const commands = [
 	new SlashCommandBuilder()
 	.setName("perpetual_incident_actions")
@@ -689,6 +700,10 @@ const commands = [
 	  .setName("subtext")
 	  .setDescription("Place here pings and stuff")
   ),
+  new SlashCommandBuilder()
+  .setName("list_yt_community_relays")
+  .setDescription("Lists the YT community relays of the server")
+  .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageWebhooks),
   new SlashCommandBuilder()
   .setName("remove_yt_community_relay")
   .setDescription("Remove the YT community relays for the current channel")
