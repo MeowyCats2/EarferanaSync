@@ -539,12 +539,11 @@ const fetchNewPosts = async () => {
 			posts.push(post);
 		}
 		if (posts.length === 0) continue;
-		posts.reverse();
 		const webhook = new WebhookClient({ url: relay.webhookUrl });
-		for (const post of posts) {
+		for (const post of posts.toReversed()) {
 			await handleYTPost(post, webhook, relay.subtext);
 		};
-		relay.postId = posts.at(-1)!.postId;
+		relay.postId = posts[0].postId;
 		await saveData();
 	}
 }
