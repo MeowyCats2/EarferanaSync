@@ -544,7 +544,7 @@ const fetchNewPosts = async () => {
 		for (const post of posts) {
 			await handleYTPost(post, webhook, relay.subtext);
 		};
-		relay.postId = posts[0].postId;
+		relay.postId = posts.at(-1)!.postId;
 		await saveData();
 	}
 }
