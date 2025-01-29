@@ -548,7 +548,7 @@ const fetchNewPosts = async () => {
 	}
 }
 fetchNewPosts();
-setInterval(fetchNewPosts, 1 * 60 * 1000)
+setInterval(fetchNewPosts, 5 * 60 * 1000)
 console.log(dataContent.ytCommunityRelays)
 const commands = [
 	new SlashCommandBuilder()
