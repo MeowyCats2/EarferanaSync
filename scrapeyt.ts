@@ -181,10 +181,17 @@ export const scrapePosts = async (channelId: string, onlyFirstPage?: boolean) =>
                 const sharedPostRenderer = itemSection.backstagePostThreadRenderer.post.sharedPostRenderer;
                 const rawPost = itemSection.backstagePostThreadRenderer.post.backstagePostRenderer ?? sharedPostRenderer;
                 console.log(rawPost.postId)
-                const postResponse = await browse({
+                let postResponse = await browse({
                     browseId: channelId,
                     params: rawPost.publishedTimeText.runs[0].navigationEndpoint.browseEndpoint.params
                 })
+                if (!postResponse.contents.twoColumnBrowseResultsRenderer.tabs.find((tab: any) => tab.tabRenderer?.title === "Community" || tab.tabRenderer?.title === "Posts").tabRenderer.content) {
+                    console.warn("Post content not found; trying again?")
+                    postResponse = await browse({
+                        browseId: channelId,
+                        params: rawPost.publishedTimeText.runs[0].navigationEndpoint.browseEndpoint.params
+                    })
+                }
                 if (!postResponse.contents.twoColumnBrowseResultsRenderer.tabs.find((tab: any) => tab.tabRenderer?.title === "Community" || tab.tabRenderer?.title === "Posts").tabRenderer.content) {
                     console.warn(rawPost.postId + " could not found full post?");
                     posts.push(parsePost(rawPost, rawPost, !!sharedPostRenderer))
