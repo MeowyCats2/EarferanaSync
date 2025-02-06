@@ -185,6 +185,11 @@ export const scrapePosts = async (channelId: string, onlyFirstPage?: boolean) =>
                     browseId: channelId,
                     params: rawPost.publishedTimeText.runs[0].navigationEndpoint.browseEndpoint.params
                 })
+                if (!postResponse.contents.twoColumnBrowseResultsRenderer.tabs.find((tab: any) => tab.tabRenderer?.title === "Community" || tab.tabRenderer?.title === "Posts").tabRenderer.content) {
+                    console.warn(rawPost.postId + " could not found full post?");
+                    posts.push(parsePost(rawPost, rawPost, !!sharedPostRenderer))
+                    continue;
+                }
                 const directPost = postResponse.contents.twoColumnBrowseResultsRenderer.tabs.find((tab: any) => tab.tabRenderer?.title === "Community" || tab.tabRenderer?.title === "Posts").tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents[0].backstagePostThreadRenderer.post[sharedPostRenderer ? "sharedPostRenderer" : "backstagePostRenderer"];
                 posts.push(parsePost(directPost, rawPost, !!sharedPostRenderer))
             } else if (itemSection.continuationItemRenderer) {
