@@ -6,16 +6,19 @@ const attachmentText = await (await fetch([...dataMsg.attachments.values()][0].u
 export const dataContent = JSON.parse(attachmentText);
 let isSaving = false;
 let waitingListeners: Function[] = [];
+let lastSavedString = "";
 export const saveData = async (fromWaiting?: boolean) => {
     if (!fromWaiting && isSaving) {
         const {promise, resolve} = Promise.withResolvers();
         waitingListeners.push(resolve);
         await promise;
+        if (lastSavedString !== JSON.stringify(dataContent)) await saveData();
         return;
     }
     const currentListeners = [...waitingListeners]
     console.log("\x1b[36m%s\x1b[0m", "Saving...")
     isSaving = true;
+    lastSavedString = JSON.stringify(dataContent);
     await dataMsg.edit({
         "files": [
             {
